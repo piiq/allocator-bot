@@ -1,0 +1,7 @@
+venv
+.vscode
+**/*.env
+**/*.pyc
+**/data/**/*
+*.log
+*api_keys*.*

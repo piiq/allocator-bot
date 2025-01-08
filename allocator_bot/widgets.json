@@ -1,0 +1,62 @@
+{
+  "allocation_data": {
+    "name": "Asset basket allocation",
+    "description": "Asset basket allocation",
+    "endpoint": "/allocation_data",
+    "category": "Allocations",
+    "sub_category": "Allocation",
+    "source": ["Allocator bot"],
+    "gridData": {
+      "x": 0,
+      "y": 0,
+      "w": 40,
+      "h": 10,
+      "minH": 10,
+      "minW": 10,
+      "maxH": 100,
+      "maxW": 100
+    },
+    "widgetId": "allocation-data",
+    "type": "table",
+    "params": [
+      {
+        "paramName": "allocation_id",
+        "value": "",
+        "label": "Allocation ID",
+        "type": "text",
+        "description": "Unique identifier for the allocation"
+      },
+      {
+        "paramName": "risk_model",
+        "label": "Risk Model",
+        "type": "text",
+        "options": [
+          { "label": "Max Sharpe", "value": "max_sharpe" },
+          { "label": "Min Volatility", "value": "min_volatility" },
+          { "label": "Efficient Risk", "value": "efficient_risk" },
+          { "label": "Efficient Return", "value": "efficient_return" }
+        ],
+        "description": "Select the risk model for allocation"
+      },
+      {
+        "paramName": "weights_or_quantities",
+        "value": "weights",
+        "label": "Weights or Quantities",
+        "type": "text",
+        "options": [
+          { "label": "Weights", "value": "weights" },
+          { "label": "Quantities", "value": "quantities" }
+        ],
+        "description": "Choose between weights or quantities for allocation"
+      }
+    ],
+    "data": {
+      "dataKey": "allocation",
+      "table": {
+        "enableCharts": false,
+        "showAll": true,
+        "transpose": false
+      }
+    }
+  }
+}
