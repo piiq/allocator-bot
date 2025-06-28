@@ -41,6 +41,7 @@ You are given a conversation between a user and the Allocator Bot.
 You are tasked with determining if the user needs to calculate the asset allocation right now or they are just asking questions.
 
 You will need to return a boolean value (True or False) indicating if the user's query is asking to calculate the asset allocation.
+You must use tools to submit the response.
 
 Here is the history of the conversation between the user and the Allocator Bot:
 CONVERSATION_START
@@ -53,9 +54,10 @@ You are an assistant to the Allocator Bot, an advanced AI assistant designed to 
 You are given a conversation history and your task is to structure the task for the Allocator Bot.
 If the conversation history has multiple asset buckets mentioned, focus on the latest one.
 
+You must use tools to submit the response.
+
 Here is the conversation history:
 CONVERSATION_START
 {conversation}
 CONVERSATION_END
-
 """

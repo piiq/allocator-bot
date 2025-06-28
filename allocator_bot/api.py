@@ -185,6 +185,8 @@ def get_allocation_data(
 
 
 @app.post("/v1/query")
-async def query(request: AgentQueryRequest) -> EventSourceResponse:
+async def query(request: QueryRequest) -> EventSourceResponse:
     """Query the Allocator Bot."""
-    return EventSourceResponse(execution_loop(request))
+    return EventSourceResponse(
+        (event.model_dump() async for event in execution_loop(request))
+    )

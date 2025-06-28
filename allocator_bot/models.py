@@ -1,190 +1,65 @@
-import json
-from enum import Enum
-from typing import Any, Literal
-from uuid import UUID
-
-from pydantic import BaseModel, Field, JsonValue, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
-class RoleEnum(str, Enum):
-    ai = "ai"
-    human = "human"
-    tool = "tool"
+class AppConfig(BaseModel):
+    """Application configuration loaded from environment variables."""
 
-
-class ChartParameters(BaseModel):
-    chartType: Literal["line", "bar", "scatter"]
-    xKey: str
-    yKey: list[str]
-
-
-class DataFormat(BaseModel):
-    """Describe the format of the data, and how it should be handled."""
-
-    type: Literal["text", "table", "chart"] | None = None
-    chart_params: ChartParameters | None = None
-
-
-class DataContent(BaseModel):
-    content: JsonValue = Field(
-        description="The data content, which must be JSON-serializable. Can be a primitive type (str, int, float, bool), list, or dict."  # noqa: E501
+    agent_host_url: str | None = Field(
+        description="The host URL and port number where the app is running."
     )
-    data_format: DataFormat | None = Field(
-        default=None,
-        description="Optional. How the data should be parsed. If not provided, a best-effort attempt will be made to automatically determine the data format.",  # noqa: E501
+    app_api_key: str | None = Field(description="The API key to access the bot.")
+    openrouter_api_key: str | None = Field(
+        description="OpenRouter API key for AI functionality."
+    )
+    data_folder_path: str | None = Field(
+        description="The path to the folder that will store the allocation data."
+    )
+    s3_enabled: bool | None = Field(
+        default=False, description="Set to true to enable S3 storage."
+    )
+    s3_endpoint: str | None = Field(default=None, description="S3 endpoint URL.")
+    s3_access_key: str | None = Field(default=None, description="S3 access key.")
+    s3_secret_key: str | None = Field(default=None, description="S3 secret key.")
+    s3_bucket_name: str | None = Field(default=None, description="S3 bucket name.")
+    allocation_data_file: str = Field(
+        default="allocations.json", description="Path to allocation file in S3."
+    )
+    fmp_api_key: str | None = Field(
+        default=None, description="Financial Modeling Prep API key for data retrieval."
     )
 
+    @field_validator("data_folder_path")
+    def validate_data_folder_path(cls, value: str | None, info) -> str | None:
+        """Validate the data folder path.
 
-class LlmFunctionCall(BaseModel):
-    function: str
-    input_arguments: dict[str, Any]
-
-
-class LlmMessage(BaseModel):
-    role: RoleEnum = Field(
-        description="The role of the entity that is creating the message"
-    )
-    content: LlmFunctionCall | str = Field(
-        description="The content of the message or the result of a function call."
-    )
-
-    @field_validator("content", mode="before")
-    def parse_content(cls, v):
-        # We do this to make sure, if the client appends the function call to
-        # the messages that we're able to parse it correctly since the client
-        # will send the LlmFunctionCall encoded as a string, rather than JSON.
-        if isinstance(v, str):
-            try:
-                parsed_content = json.loads(v)
-                if isinstance(parsed_content, str):
-                    # Sometimes we need a second decode if the content is
-                    # escaped and string-encoded
-                    parsed_content = json.loads(parsed_content)
-                return LlmFunctionCall(**parsed_content)
-            except (json.JSONDecodeError, TypeError, ValueError):
-                return v
-
-
-class LlmClientFunctionCallResult(BaseModel):
-    """Contains the result of a function call made against a client."""
-
-    role: RoleEnum = RoleEnum.tool
-    function: str = Field(description="The name of the called function.")
-    input_arguments: dict[str, Any] | None = Field(
-        default=None, description="The input arguments passed to the function"
-    )
-    data: list[DataContent] = Field(description="The content of the function call.")
-
-
-class RawContext(BaseModel):
-    uuid: UUID = Field(description="The UUID of the widget.")
-    name: str = Field(description="The name of the widget.")
-    description: str = Field(
-        description="A description of the data contained in the widget"
-    )
-    data: DataContent = Field(description="The data content of the widget")
-    metadata: dict[str, Any] | None = Field(
-        default=None,
-        description="Additional widget metadata (eg. the selected ticker, etc)",
-    )
-
-
-class Widget(BaseModel):
-    uuid: str = Field(description="The UUID of the widget.")
-    name: str = Field(description="The name of the widget.")
-    description: str = Field(
-        description="A description of the data contained in the widget"
-    )
-    metadata: dict[Any, Any] | None = Field(
-        default=None,
-        description="Additional widget metadata (eg. the selected ticker, etc)",
-    )
-
-
-class AgentQueryRequest(BaseModel):
-    messages: list[LlmClientFunctionCallResult | LlmMessage] = Field(
-        description="A list of messages to submit to the copilot."
-    )
-    context: str | list[RawContext] | None = Field(
-        default=None, description="Additional context."
-    )
-    use_docs: bool = Field(
-        default=None, description="Set True to use uploaded docs when answering query."
-    )
-    widgets: list[Widget] = Field(
-        default=None, description="A list of widgets for the copilot to consider."
-    )
-
-    @field_validator("messages")
-    @classmethod
-    def check_messages_not_empty(cls, value):
-        if not value:
-            raise ValueError("messages list cannot be empty.")
+        Must be set if S3 is not enabled, must be an absolute path, and must exist.
+        Raises ValueError if the path is not valid.
+        """
+        if value is None and not info.data.get("s3_enabled", False):
+            raise ValueError("Data folder path must be set when S3 is not enabled.")
         return value
 
+    @field_validator("s3_endpoint", "s3_access_key", "s3_secret_key", "s3_bucket_name")
+    def validate_s3_config(cls, value: str | None, info) -> str | None:
+        """Validate S3 configuration values.
 
-class BaseSSE(BaseModel):
-    event: Any
-    data: Any
+        If S3 is enabled, all values must be set and not None.
+        If S3 is not enabled, these values can be None.
+        """
+        if value is None and info.data.get("s3_enabled", False):
+            raise ValueError("S3 configuration values must be set when S3 is enabled.")
+        return value
 
-    def model_dump(self, *args, **kwargs) -> dict:
-        return {
-            "event": self.event,
-            "data": self.data.model_dump_json(exclude_none=True),
-        }
+    @field_validator("fmp_api_key")
+    def validate_fmp_api_key(cls, value: str | None) -> str | None:
+        """Validate the Financial Modeling Prep API key.
 
-
-class FunctionCallSSEData(BaseModel):
-    function: Literal["get_widget_data"]
-    input_arguments: dict
-    copilot_function_call_arguments: dict | None = Field(
-        default=None,
-        description="The original arguments of the function call to copilot. This may be different to what is actually returned as the function call to the client.",  # noqa: E501
-    )
-
-
-class FunctionCallSSE(BaseSSE):
-    event: Literal["copilotFunctionCall"] = "copilotFunctionCall"
-    data: FunctionCallSSEData
-
-
-class StatusUpdateSSEData(BaseModel):
-    eventType: Literal["INFO", "WARNING", "ERROR"]
-    message: str
-    group: Literal["reasoning"] = "reasoning"
-    details: list[dict[str, str | int | float | None]] | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def exclude_fields(cls, values):
-        # Exclude these fields from being in the "details" field.  (since this
-        # pollutes the JSON output)
-        _exclude_fields = []
-
-        if details := values.get("details"):
-            for detail in details:
-                for key in list(detail.keys()):
-                    if key.lower() in _exclude_fields:
-                        detail.pop(key, None)
-        return values
-
-
-class StatusUpdateSSE(BaseSSE):
-    event: Literal["copilotStatusUpdate"] = "copilotStatusUpdate"
-    data: StatusUpdateSSEData
-
-
-class ArtifactSSEData(BaseModel):
-    type: Literal["text", "table", "chart"]
-    name: str
-    description: str
-    uuid: UUID
-    content: str | list[dict]
-
-
-class ArtifactSSE(BaseSSE):
-    event: Literal["copilotMessageArtifact"] = "copilotMessageArtifact"
-    data: ArtifactSSEData
+        Must be set if FMP data retrieval is required.
+        Raises ValueError if the key is not valid.
+        """
+        if value is None:
+            raise ValueError("FMP API key must be set for data retrieval.")
+        return value
 
 
 class TaskStructure(BaseModel):
