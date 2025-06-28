@@ -21,8 +21,8 @@ A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate
 - FMP API access (via [OpenBB Platform](https://docs.openbb.co/platform))
 - OpenAI API access
 - Dependencies listed in `pyproject.toml`
-
 - **Tech Stack**:
+
   - FastAPI with Starlette SSE for real-time updates
   - OpenBB Platform Python library for data access
   - PyPortfolioOpt for optimization algorithms
@@ -31,17 +31,25 @@ A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate
 
 ## Installation
 
+### Install with pip from GitHub
+
+```bash
+pip install git+https://github.com/piiq/allocator-bot.git
+```
+
+### Install for development with uv
+
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/allocator-bot.git
+   git clone https://github.com/piiq/allocator-bot.git
    cd allocator-bot
    ```
 
 2. Install dependencies using Poetry:
 
    ```bash
-   poetry install
+   uv sync
    ```
 
 ## Configuration
@@ -53,7 +61,7 @@ A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate
 Start the server on localhost:
 
 ```bash
-python main.py
+allocator-bot
 ```
 
 ### Adding to OpenBB Workspace
@@ -69,6 +77,7 @@ python main.py
    - Click "Create"
 
 2. **Add as a Widget Source**:
+
    - Click "Add Data" on your dashboard
    - Go to "Custom Backends"
    - Select "Allocator Bot Backend"
