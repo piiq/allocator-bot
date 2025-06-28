@@ -1,0 +1,66 @@
+# Allocator Bot - AI Coding Agent Instructions.
+
+## Project Overview
+
+The Allocator Bot is a portfolio optimization chat bot and app for OpenBB Workspace that:
+
+- Exposes widgets with portfolio allocation data
+- Exposes an AI agent that can do portfolio allocation tasks
+
+## Key Components
+
+### Core Modules:
+
+1. `agent.py` - Main AI agent logic using magentic for LLM interactions
+2. `api.py` - FastAPI endpoints and S3 integration
+3. `portfolio.py` - Portfolio optimization logic
+4. `models.py` - Pydantic models for data validation
+5. `prompts.py` - System prompts and templates
+
+### Important Patterns:
+
+- Uses async/await for all LLM interactions
+- Uses latest version of `magentic` library for LLM calls
+- Implements SSE for real-time updates
+- Follows OpenBB widget integration standards by specifying openapi-extra in endpoints
+- Uses Pydantic for strict data validation
+- Uses PyPortfolioOpt for efficient frontier calculations
+- Offers multiple optimization models (Max Sharpe, Min Volatility, etc.)
+- Integrates with OpenBB Platform (openbb python package) for financial data retrieval
+
+## Coding Guidelines
+
+### Data Flow:
+
+1. User request → API endpoint (/v1/query)
+2. Agent processes request via execution_loop()
+3. Portfolio module calculates optimizations
+4. Results formatted and streamed back via SSE
+
+## Implementation Notes
+
+### Critical Dependencies:
+
+- PyPortfolioOpt for optimization algorithms
+- OpenBB Platform for market data
+- Magentic for LLM interactions
+- FastAPI for web API interface
+
+### Dependency Management:
+
+- Uses uv for dependency management
+- Add new dependencies with: `uv add package-name`
+- Add development dependencies only to the dev group
+- Sync dependencies with: `uv sync --extra dev`
+- Never modify pyproject.toml dependencies directly - always use uv commands
+
+### Key Environment Variables:
+
+- OPENROUTER_API_KEY - For LLM access
+- FMP_API_KEY - For financial data
+- S3\_\* - For cloud storage (if enabled)
+
+### AI Instructions
+
+- AI instructions are defined in llms.txt
+- llms.txt is symlinked to .cursorrules and GEMINI.md to be accessible by specific assistants
