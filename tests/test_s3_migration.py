@@ -12,22 +12,26 @@ def mock_s3_client():
         yield mock_client.return_value
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_config_s3_enabled():
-    with patch("allocator_bot.config.config") as mock_config:
-        mock_config.s3_enabled = True
-        mock_config.s3_bucket_name = "test-bucket"
-        mock_config.allocation_data_file = "allocations.json"
-        mock_config.s3_endpoint = "http://localhost:9000"
-        mock_config.s3_access_key = "test-access-key"
-        mock_config.s3_secret_key = "test-secret-key"
-        mock_config.fmp_api_key = "mock-api-key"
-        mock_config.data_folder_path = "/tmp"
-        yield mock_config
+    """Mock config to enable S3 and set test values."""
+    with patch("allocator_bot.portfolio.config") as mock_config_portfolio, patch(
+        "allocator_bot.storage.config"
+    ) as mock_config_storage:
+        for mock_config in [mock_config_portfolio, mock_config_storage]:
+            mock_config.s3_enabled = True
+            mock_config.s3_bucket_name = "test-bucket"
+            mock_config.allocation_data_file = "allocations.json"
+            mock_config.s3_endpoint = "http://localhost:9000"
+            mock_config.s3_access_key = "test-access-key"
+            mock_config.s3_secret_key = "test-secret-key"
+            mock_config.fmp_api_key = "mock-api-key"
+            mock_config.data_folder_path = "/tmp"
+        yield
 
 
 def test_save_and_load_allocations_s3(mock_s3_client, mock_config_s3_enabled):
-    from allocator_bot.config import load_allocations_from_s3
+    from allocator_bot.storage import load_allocations_from_s3
     from allocator_bot.portfolio import save_allocation
 
     # Mock the get_object and put_object methods
@@ -60,7 +64,7 @@ def test_save_and_load_allocations_s3(mock_s3_client, mock_config_s3_enabled):
 
 
 def test_load_allocations_from_s3_no_key(mock_s3_client, mock_config_s3_enabled):
-    from allocator_bot.config import load_allocations_from_s3
+    from allocator_bot.storage import load_allocations_from_s3
 
     # Simulate NoSuchKey error
     mock_s3_client.get_object.side_effect = ClientError(

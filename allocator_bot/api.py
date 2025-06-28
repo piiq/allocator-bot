@@ -34,12 +34,12 @@ app.add_middleware(
 logging.info("Startup complete")
 
 
-@app.get("/")
+@app.get("/", openapi_extra={"widget_config": {"exclude": True}})
 def read_root():
     return {"info": "Asset basket allocator"}
 
 
-@app.get("/agents.json")
+@app.get("/agents.json", openapi_extra={"widget_config": {"exclude": True}})
 def get_agent_description():
     """Widgets configuration file for the OpenBB Terminal Pro"""
     return JSONResponse(
@@ -57,9 +57,6 @@ def get_agent_description():
             }
         }
     )
-
-
-
 
 
 @app.get(
@@ -120,7 +117,11 @@ def get_agent_description():
                 "dataKey": "allocation",
                 "table": {
                     "enableCharts": True,
-                    "chartView": {"enabled": True, "chartType": "donut"},
+                    "chartView": {
+                        "enabled": True,
+                        "chartType": "donut",
+                        "cellRangeCols": {"donut": ["ticker", "weight"]},
+                    },
                     "showAll": True,
                     "transpose": False,
                 },

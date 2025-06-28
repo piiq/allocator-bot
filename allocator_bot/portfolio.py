@@ -7,7 +7,8 @@ import pandas as pd
 from openbb import obb  # type: ignore
 from pypfopt import EfficientFrontier, expected_returns, risk_models  # type: ignore
 
-from .config import config, load_allocations_from_s3, save_allocations_to_s3
+from .config import config
+from .storage import load_allocations_from_s3, save_allocations_to_s3
 
 
 def fetch_historical_prices(

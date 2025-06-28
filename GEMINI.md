@@ -1,1 +1,1 @@
-llms.txt
+llms.md
