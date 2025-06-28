@@ -1,38 +1,15 @@
 import json
 import logging
 import os
-from fastapi import Depends, FastAPI
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from openbb_ai.models import QueryRequest  # type: ignore[import-untyped]
 from sse_starlette.sse import EventSourceResponse
 
 from .agent import execution_loop
-from .models import AgentQueryRequest
-from .utils import require_api_key
-
-# Load environment variables and configuration
-DATA_FOLDER_PATH = os.getenv("DATA_FOLDER_PATH", None)
-API_KEYS_FILE_PATH = os.getenv("API_KEYS_FILE_PATH", None)
-HOST_URL = os.getenv("HOST_URL", None)
-
-if not DATA_FOLDER_PATH or not API_KEYS_FILE_PATH or not HOST_URL:
-    raise ValueError(
-        "DATA_FOLDER_PATH, API_KEYS_FILE_PATH and HOST_URL must be set in the environment variables"
-    )
-
-# Load API keys
-with open(API_KEYS_FILE_PATH, "r") as f:
-    api_keys = [line.strip() for line in f.readlines()]
-
-# Load configuration files
-widgets_json_path = os.path.join(os.path.dirname(__file__), "widgets.json")
-copilots_json_path = os.path.join(os.path.dirname(__file__), "copilots.json")
-
-with open(widgets_json_path, "r") as f:
-    widgets_json = json.load(f)
-
-with open(copilots_json_path, "r") as f:
-    copilots_json = json.load(f)
+from .config import config, load_allocations_from_s3
 
 app = FastAPI()
 
@@ -42,6 +19,7 @@ origins = [
     "http://localhost:1420",
     "http://localhost:5050",
     "https://pro.openbb.co",
+    "https://pro.openbb.dev",
     "https://excel.openbb.co",
 ]
 
@@ -61,27 +39,101 @@ def read_root():
     return {"info": "Asset basket allocator"}
 
 
-@app.get("/widgets.json")
-def get_widgets(header: str = Depends(require_api_key(api_keys=api_keys))):
-    """Widgets configuration file for OpenBB Workspace."""
-    return JSONResponse(content=widgets_json)
+@app.get("/agents.json")
+def get_agent_description():
+    """Widgets configuration file for the OpenBB Terminal Pro"""
+    return JSONResponse(
+        content={
+            "vanilla_agent_raw_context": {
+                "name": "Allocator Bot",
+                "description": "AI-powered allocator bot to answer questions about the asset basket allocation.",
+                "image": "https://github.com/OpenBB-finance/copilot-for-terminal-pro/assets/14093308/7da2a512-93b9-478d-90bc-b8c3dd0cabcf",
+                "endpoints": {"query": f"{config.agent_host_url}/v1/query"},
+                "features": {
+                    "streaming": True,
+                    "widget-dashboard-select": True,
+                    "widget-dashboard-search": False,
+                },
+            }
+        }
+    )
 
 
-@app.get("/copilots.json")
-def get_copilot_description(
-    header: str = Depends(require_api_key(api_keys=api_keys)),
-):
-    """Copilot configuration file for OpenBB Workspace."""
-    return JSONResponse(content=copilots_json)
 
 
-@app.get("/allocation_data")
+
+@app.get(
+    "/allocation_data",
+    openapi_extra={
+        "widget_config": {
+            "name": "Asset basket allocation",
+            "description": "Asset basket allocation",
+            "endpoint": "/allocation_data",
+            "category": "Allocations",
+            "sub_category": "Allocation",
+            "source": ["Allocator bot"],
+            "gridData": {
+                "x": 0,
+                "y": 0,
+                "w": 40,
+                "h": 10,
+                "minH": 10,
+                "minW": 10,
+                "maxH": 100,
+                "maxW": 100,
+            },
+            "widgetId": "allocation-data",
+            "type": "table",
+            "params": [
+                {
+                    "paramName": "allocation_id",
+                    "value": "",
+                    "label": "Allocation ID",
+                    "type": "text",
+                    "description": "Unique identifier for the allocation",
+                },
+                {
+                    "paramName": "risk_model",
+                    "label": "Risk Model",
+                    "type": "text",
+                    "options": [
+                        {"label": "Max Sharpe", "value": "max_sharpe"},
+                        {"label": "Min Volatility", "value": "min_volatility"},
+                        {"label": "Efficient Risk", "value": "efficient_risk"},
+                        {"label": "Efficient Return", "value": "efficient_return"},
+                    ],
+                    "description": "Select the risk model for allocation",
+                },
+                {
+                    "paramName": "weights_or_quantities",
+                    "value": "weights",
+                    "label": "Weights or Quantities",
+                    "type": "text",
+                    "options": [
+                        {"label": "Weights", "value": "weights"},
+                        {"label": "Quantities", "value": "quantities"},
+                    ],
+                    "description": "Choose between weights or quantities for allocation",
+                },
+            ],
+            "data": {
+                "dataKey": "allocation",
+                "table": {
+                    "enableCharts": True,
+                    "chartView": {"enabled": True, "chartType": "donut"},
+                    "showAll": True,
+                    "transpose": False,
+                },
+            },
+        }
+    },
+)
 def get_allocation_data(
-    allocation_id: str = None,
-    risk_model: str = None,
+    allocation_id: str | None = None,
+    risk_model: str | None = None,
     weights_or_quantities: str = "weights",
-    header: str = Depends(require_api_key(api_keys=api_keys)),
-):
+    # header: str = Depends(require_api_key(api_key=config.app_api_key)),
+) -> JSONResponse:
     """Fetch allocation data.
 
     This is an endpoint that powers the relevant widget.
@@ -98,11 +150,11 @@ def get_allocation_data(
 
     if risk_model:
         if isinstance(risk_model, str):
-            risk_model = [risk_model]
+            risk_model_list = [risk_model]
         selected_allocation = [
             allocation
             for allocation in selected_allocation
-            if allocation["Risk Model"] in risk_model
+            if allocation["Risk Model"] in risk_model_list
         ]
 
     if weights_or_quantities == "quantities":
