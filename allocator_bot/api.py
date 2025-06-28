@@ -141,8 +141,21 @@ def get_allocation_data(
     if not allocation_id:
         return JSONResponse(content={"error": "Allocation ID is required"})
 
-    with open(os.path.join(DATA_FOLDER_PATH, "allocations.json"), "r") as f:
-        allocations = json.load(f)
+    allocations = {}
+    if config.s3_enabled:
+        allocations = load_allocations_from_s3()
+    else:
+        if not config.data_folder_path:
+            return JSONResponse(
+                content={"error": "Data folder path is not configured"},
+                status_code=500,
+            )
+        try:
+            data_folder_path = os.path.abspath(config.data_folder_path)
+            with open(os.path.join(data_folder_path, "allocations.json"), "r") as f:
+                allocations = json.load(f)
+        except FileNotFoundError:
+            allocations = {}
 
     selected_allocation = allocations.get(
         allocation_id, [{"Ticker": "N/A", "Quantity": 0}]

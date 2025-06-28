@@ -20,3 +20,37 @@ config = AppConfig(
     fmp_api_key=os.getenv("FMP_API_KEY", None),
 )
 
+
+def load_allocations_from_s3():
+    """Load allocations.json from S3 bucket."""
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=config.s3_endpoint,
+        aws_access_key_id=config.s3_access_key,
+        aws_secret_access_key=config.s3_secret_key,
+    )
+    try:
+        obj = s3.get_object(
+            Bucket=config.s3_bucket_name, Key=config.allocation_data_file
+        )
+        return json.loads(obj["Body"].read().decode("utf-8"))
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchKey":
+            return {}
+        else:
+            raise
+
+
+def save_allocations_to_s3(allocations: dict):
+    """Save allocations to S3 bucket."""
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=config.s3_endpoint,
+        aws_access_key_id=config.s3_access_key,
+        aws_secret_access_key=config.s3_secret_key,
+    )
+    s3.put_object(
+        Bucket=config.s3_bucket_name,
+        Key=config.allocation_data_file,
+        Body=json.dumps(allocations, indent=4),
+    )
