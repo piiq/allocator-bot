@@ -24,6 +24,9 @@ class AppConfig(BaseModel):
     allocation_data_file: str = Field(
         default="allocations.json", description="Path to allocation file in S3."
     )
+    task_data_file: str = Field(
+        default="tasks.json", description="Path to task file in S3."
+    )
     fmp_api_key: str | None = Field(
         default=None, description="Financial Modeling Prep API key for data retrieval."
     )

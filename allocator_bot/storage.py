@@ -1,94 +1,135 @@
 import json
+import os
 
 import boto3
-import pandas as pd
 from botocore.exceptions import ClientError
 
 from .config import config
 
 
-def load_allocations_from_s3():
-    """Load allocations.json from S3 bucket."""
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=config.s3_endpoint,
-        aws_access_key_id=config.s3_access_key,
-        aws_secret_access_key=config.s3_secret_key,
-    )
-    try:
-        obj = s3.get_object(
-            Bucket=config.s3_bucket_name, Key=config.allocation_data_file
-        )
-        return json.loads(obj["Body"].read().decode("utf-8"))
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "NoSuchKey":
+class LocalFileStorage:
+    """Handles local file storage operations."""
+
+    def __init__(self):
+        if not config.data_folder_path:
+            raise ValueError("data_folder_path is not configured")
+        self.data_folder_path = config.data_folder_path
+        if not os.path.exists(self.data_folder_path):
+            os.makedirs(self.data_folder_path)
+        self.allocations_file = os.path.join(self.data_folder_path, "allocations.json")
+        self.tasks_file = os.path.join(self.data_folder_path, "tasks.json")
+
+    def load_allocations(self) -> dict:
+        """Load allocations from a local file."""
+        if not os.path.exists(self.allocations_file):
             return {}
-        else:
+        with open(self.allocations_file, "r") as f:
+            return json.load(f)
+
+    def save_allocations(self, allocations: dict) -> None:
+        """Save allocations to a local file."""
+        with open(self.allocations_file, "w") as f:
+            json.dump(allocations, f, indent=4)
+
+    def load_tasks(self) -> dict:
+        """Load tasks from a local file."""
+        if not os.path.exists(self.tasks_file):
+            return {}
+        with open(self.tasks_file, "r") as f:
+            return json.load(f)
+
+    def save_tasks(self, tasks: dict) -> None:
+        """Save tasks to a local file."""
+        with open(self.tasks_file, "w") as f:
+            json.dump(tasks, f, indent=4)
+
+
+class CloudObjectStorage:
+    """Handles cloud storage operations using S3."""
+
+    def __init__(self):
+        self.s3 = boto3.client(
+            "s3",
+            endpoint_url=config.s3_endpoint,
+            aws_access_key_id=config.s3_access_key,
+            aws_secret_access_key=config.s3_secret_key,
+        )
+        self.bucket_name = config.s3_bucket_name
+        self.allocation_data_file = config.allocation_data_file
+        self.task_data_file = config.task_data_file
+
+    def load_allocations(self) -> dict:
+        """Load allocations.json from S3 bucket."""
+        try:
+            obj = self.s3.get_object(
+                Bucket=self.bucket_name, Key=self.allocation_data_file
+            )
+            return json.loads(obj["Body"].read().decode("utf-8"))
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return {}
             raise
 
-
-def save_allocations_to_s3(allocations: dict):
-    """Save allocations to S3 bucket."""
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=config.s3_endpoint,
-        aws_access_key_id=config.s3_access_key,
-        aws_secret_access_key=config.s3_secret_key,
-    )
-    s3.put_object(
-        Bucket=config.s3_bucket_name,
-        Key=config.allocation_data_file,
-        Body=json.dumps(allocations, indent=4),
-    )
-
-
-def load_allocations_from_file(file_path: str):
-    """Load allocations from a local file."""
-    try:
-        with open(file_path, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-
-def save_allocations_to_file(file_path: str, allocations: dict):
-    """Save allocations to a local file."""
-    with open(file_path, "w") as f:
-        json.dump(allocations, f, indent=4)
-
-def get_all_allocations():
-    """Load all allocations and format them for display."""
-    if config.s3_enabled:
-        allocations_data = load_allocations_from_s3()
-    else:
-        allocations_data = load_allocations_from_file(
-            f"{config.data_folder_path}/allocations.json"
+    def save_allocations(self, allocations: dict) -> None:
+        """Save allocations to S3 bucket."""
+        self.s3.put_object(
+            Bucket=config.s3_bucket_name,
+            Key=self.allocation_data_file,
+            Body=json.dumps(allocations, indent=4),
         )
 
-    if not allocations_data:
-        return []
+    def load_tasks(self) -> dict:
+        """Load tasks.json from S3 bucket."""
+        try:
+            obj = self.s3.get_object(Bucket=self.bucket_name, Key=self.task_data_file)
+            return json.loads(obj["Body"].read().decode("utf-8"))
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return {}
+            raise
 
-    processed_allocations = []
-    for allocation_id, allocation_details in allocations_data.items():
-        # Most of the times there is only one allocation per id, but sometimes there are more
-        if not isinstance(allocation_details, list):
-            allocation_details = [allocation_details]
+    def save_tasks(self, tasks: dict) -> None:
+        """Save tasks to S3 bucket."""
+        self.s3.put_object(
+            Bucket=self.bucket_name,
+            Key=self.task_data_file,
+            Body=json.dumps(tasks, indent=4),
+        )
 
-        for allocation in allocation_details:
-            task_params = {
-                key: value
-                for key, value in allocation.items()
-                if key not in ["Ticker", "Weight", "Quantity"]
-            }
-            processed_allocations.append(
-                {
-                    "allocation_id": allocation_id,
-                    "symbols": ", ".join(allocation.get("asset_symbols", [])) if "asset_symbols" in allocation else "N/A",
-                    "investment_amount": allocation.get("total_investment", "N/A"),
-                    "holding_period": f"{allocation.get('start_date', 'N/A')} - {allocation.get('end_date', 'N/A')}",
-                    "task_parameters": json.dumps(task_params),
-                }
-            )
 
-    df = pd.DataFrame(processed_allocations)
-    return df.to_dict(orient="records")
+def get_storage() -> LocalFileStorage | CloudObjectStorage:
+    """Get the appropriate storage class based on configuration."""
+    if config.s3_enabled:
+        return CloudObjectStorage()
+    else:
+        return LocalFileStorage()
+
+
+def save_task(allocation_id: str, task_data: dict) -> str:
+    """Save a new task."""
+    storage: LocalFileStorage | CloudObjectStorage = get_storage()
+    tasks = storage.load_tasks()
+    tasks[allocation_id] = task_data
+    storage.save_tasks(tasks)
+    return allocation_id
+
+
+def save_allocation(allocation_id: str, allocation_data: list[dict]) -> str:
+    """Save the allocation to a json file."""
+    storage: LocalFileStorage | CloudObjectStorage = get_storage()
+    allocations = storage.load_allocations()
+    allocations[allocation_id] = allocation_data
+    storage.save_allocations(allocations)
+    return allocation_id
+
+
+def load_allocations() -> dict:
+    """Load allocations from the configured storage."""
+    storage: LocalFileStorage | CloudObjectStorage = get_storage()
+    return storage.load_allocations()
+
+
+def load_tasks() -> dict:
+    """Load tasks from the configured storage."""
+    storage: LocalFileStorage | CloudObjectStorage = get_storage()
+    return storage.load_tasks()

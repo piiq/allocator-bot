@@ -15,7 +15,8 @@ from openbb_ai.helpers import citations, cite, message_chunk, reasoning_step, ta
 from openbb_ai.models import BaseSSE, QueryRequest, Widget, WidgetParam
 
 from .models import TaskStructure
-from .portfolio import prepare_allocation, save_allocation
+from .portfolio import prepare_allocation
+from .storage import save_allocation, save_task
 from .prompts import (
     DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
     PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
@@ -125,6 +126,13 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                             allocation_id = save_allocation(
                                 allocation_id=generate_id(length=2),
                                 allocation_data=allocation.to_dict(orient="records"),
+                            )
+
+                            task_to_save = task_structure.model_dump()
+                            task_to_save.pop("task")
+                            save_task(
+                                allocation_id=allocation_id,
+                                task_data=task_to_save,
                             )
 
                             yield reasoning_step(

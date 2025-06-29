@@ -1,6 +1,4 @@
-import json
 import logging
-import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +7,8 @@ from openbb_ai.models import QueryRequest  # type: ignore[import-untyped]
 from sse_starlette.sse import EventSourceResponse
 
 from .agent import execution_loop
-from .config import config, load_allocations_from_s3
+from .config import config
+from .storage import load_allocations
 
 app = FastAPI()
 
@@ -44,14 +43,14 @@ def get_agent_description():
     """Widgets configuration file for the OpenBB Terminal Pro"""
     return JSONResponse(
         content={
-            "vanilla_agent_raw_context": {
+            "allocator_bot": {
                 "name": "Allocator Bot",
                 "description": "AI-powered allocator bot to answer questions about the asset basket allocation.",
                 "image": "https://github.com/OpenBB-finance/copilot-for-terminal-pro/assets/14093308/7da2a512-93b9-478d-90bc-b8c3dd0cabcf",
                 "endpoints": {"query": f"{config.agent_host_url}/v1/query"},
                 "features": {
                     "streaming": True,
-                    "widget-dashboard-select": True,
+                    "widget-dashboard-select": False,
                     "widget-dashboard-search": False,
                 },
             }
@@ -143,20 +142,7 @@ def get_allocation_data(
         return JSONResponse(content={"error": "Allocation ID is required"})
 
     allocations = {}
-    if config.s3_enabled:
-        allocations = load_allocations_from_s3()
-    else:
-        if not config.data_folder_path:
-            return JSONResponse(
-                content={"error": "Data folder path is not configured"},
-                status_code=500,
-            )
-        try:
-            data_folder_path = os.path.abspath(config.data_folder_path)
-            with open(os.path.join(data_folder_path, "allocations.json"), "r") as f:
-                allocations = json.load(f)
-        except FileNotFoundError:
-            allocations = {}
+    allocations = load_allocations()
 
     selected_allocation = allocations.get(
         allocation_id, [{"Ticker": "N/A", "Quantity": 0}]

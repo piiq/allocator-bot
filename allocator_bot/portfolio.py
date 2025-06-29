@@ -1,14 +1,9 @@
-import json
-import os
 import warnings
 from datetime import datetime, timedelta
 
 import pandas as pd
 from openbb import obb  # type: ignore
 from pypfopt import EfficientFrontier, expected_returns, risk_models  # type: ignore
-
-from .config import config
-from .storage import load_allocations_from_s3, save_allocations_to_s3
 
 
 def fetch_historical_prices(
@@ -139,27 +134,3 @@ def prepare_allocation(
             )
 
     return pd.DataFrame(results)
-
-
-def save_allocation(allocation_id: str, allocation_data: list[dict]) -> str:
-    """Save the allocation to a json file."""
-    if config.s3_enabled:
-        allocations = load_allocations_from_s3()
-        allocations[allocation_id] = allocation_data
-        save_allocations_to_s3(allocations)
-    else:
-        if not config.data_folder_path:
-            raise ValueError("data_folder_path is not configured")
-
-        allocations_file = os.path.join(config.data_folder_path, "allocations.json")
-        if os.path.exists(allocations_file):
-            with open(allocations_file, "r") as f:
-                allocation_results_json = json.load(f)
-        else:
-            allocation_results_json = {}
-
-        allocation_results_json[allocation_id] = allocation_data
-
-        with open(allocations_file, "w") as f:
-            json.dump(allocation_results_json, f, indent=4)
-    return allocation_id
