@@ -11,17 +11,28 @@ from magentic import (
 )
 from magentic.chat_model.openrouter_chat_model import OpenRouterChatModel
 from magentic.chat_model.retry_chat_model import RetryChatModel
-from openbb_ai.helpers import citations, cite, message_chunk, reasoning_step, table
-from openbb_ai.models import BaseSSE, QueryRequest, Widget, WidgetParam
+from openbb_ai.helpers import (  # type: ignore[import-untyped]
+    citations,
+    cite,
+    message_chunk,
+    reasoning_step,
+    table,
+)
+from openbb_ai.models import (  # type: ignore[import-untyped]
+    BaseSSE,
+    QueryRequest,
+    Widget,
+    WidgetParam,
+)
 
 from .models import TaskStructure
 from .portfolio import prepare_allocation
-from .storage import save_allocation, save_task
 from .prompts import (
     DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
     PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
     SYSTEM_PROMPT,
 )
+from .storage import save_allocation, save_task
 from .utils import generate_id, is_last_message, sanitize_message
 
 logger = logging.getLogger(__name__)

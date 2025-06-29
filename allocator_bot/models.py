@@ -11,9 +11,6 @@ class AppConfig(BaseModel):
     openrouter_api_key: str | None = Field(
         description="OpenRouter API key for AI functionality."
     )
-    data_folder_path: str | None = Field(
-        description="The path to the folder that will store the allocation data."
-    )
     s3_enabled: bool | None = Field(
         default=False, description="Set to true to enable S3 storage."
     )
@@ -21,6 +18,9 @@ class AppConfig(BaseModel):
     s3_access_key: str | None = Field(default=None, description="S3 access key.")
     s3_secret_key: str | None = Field(default=None, description="S3 secret key.")
     s3_bucket_name: str | None = Field(default=None, description="S3 bucket name.")
+    data_folder_path: str | None = Field(
+        description="The path to the folder that will store the allocation data."
+    )
     allocation_data_file: str = Field(
         default="allocations.json", description="Path to allocation file in S3."
     )
