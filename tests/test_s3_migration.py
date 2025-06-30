@@ -28,7 +28,7 @@ def mock_config_s3_enabled():
         yield
 
 
-def test_save_and_load_allocations_s3(mock_s3_client, mock_config_s3_enabled):
+async def test_save_and_load_allocations_s3(mock_s3_client, mock_config_s3_enabled):
     from allocator_bot.storage import load_allocations, save_allocation
 
     # Mock the get_object and put_object methods
@@ -40,7 +40,7 @@ def test_save_and_load_allocations_s3(mock_s3_client, mock_config_s3_enabled):
     allocation_data = [{"Ticker": "AAPL", "Weight": 0.5, "Quantity": 10}]
 
     # Test saving to S3
-    save_allocation(allocation_id, allocation_data)
+    await save_allocation(allocation_id, allocation_data)
 
     # Verify put_object was called correctly
     mock_s3_client.put_object.assert_called_once_with(
@@ -55,12 +55,12 @@ def test_save_and_load_allocations_s3(mock_s3_client, mock_config_s3_enabled):
             read=lambda: json.dumps({allocation_id: allocation_data}).encode("utf-8")
         )
     }
-    loaded_allocations = load_allocations()
+    loaded_allocations = await load_allocations()
 
     assert loaded_allocations == {allocation_id: allocation_data}
 
 
-def test_load_allocations_from_s3_no_key(mock_s3_client, mock_config_s3_enabled):
+async def test_load_allocations_from_s3_no_key(mock_s3_client, mock_config_s3_enabled):
     from allocator_bot.storage import load_allocations
 
     # Simulate NoSuchKey error
@@ -68,7 +68,7 @@ def test_load_allocations_from_s3_no_key(mock_s3_client, mock_config_s3_enabled)
         {"Error": {"Code": "NoSuchKey"}}, "GetObject"
     )
 
-    loaded_allocations = load_allocations()
+    loaded_allocations = await load_allocations()
     assert loaded_allocations == {}
 
 
@@ -77,7 +77,7 @@ def test_load_allocations_from_s3_no_key(mock_s3_client, mock_config_s3_enabled)
     [(True, "mock_s3_client"), (False, None)],
     indirect=["mock_s3_client"],
 )
-def test_save_allocation_s3_and_local(
+async def test_save_allocation_s3_and_local(
     s3_enabled, mock_s3_client, tmp_path, monkeypatch
 ):
     # Mock the config values
@@ -114,7 +114,7 @@ def test_save_allocation_s3_and_local(
     allocation_id = "new_test_id"
     allocation_data = [{"Ticker": "MSFT", "Weight": 0.8, "Quantity": 5}]
 
-    save_allocation(allocation_id, allocation_data)
+    await save_allocation(allocation_id, allocation_data)
 
     expected_data = {
         "existing_id": [{"Ticker": "GOOG", "Weight": 0.2}],
@@ -135,133 +135,149 @@ def test_save_allocation_s3_and_local(
         assert updated_data == expected_data
 
 
-def test_local_file_storage_init_creates_directory(tmp_path, monkeypatch):
+async def test_local_file_storage_init_creates_directory(tmp_path, monkeypatch):
     """Test LocalFileStorage creates directory if it doesn't exist."""
     from allocator_bot.storage import LocalFileStorage
-    
+
     storage_path = tmp_path / "new_storage_dir"
     assert not storage_path.exists()
-    
-    monkeypatch.setattr("allocator_bot.storage.config.data_folder_path", str(storage_path))
-    
+
+    monkeypatch.setattr(
+        "allocator_bot.storage.config.data_folder_path", str(storage_path)
+    )
+
     storage = LocalFileStorage()
     assert storage_path.exists()
     assert storage.data_folder_path == str(storage_path)
 
 
-def test_local_file_storage_init_no_path():
+async def test_local_file_storage_init_no_path():
     """Test LocalFileStorage raises error when data_folder_path is None."""
-    from allocator_bot.storage import LocalFileStorage
     from unittest.mock import patch
-    
+
+    from allocator_bot.storage import LocalFileStorage
+
     with patch("allocator_bot.storage.config.data_folder_path", None):
         with pytest.raises(ValueError, match="data_folder_path is not configured"):
             LocalFileStorage()
 
 
-def test_local_file_storage_load_nonexistent_allocations(tmp_path, monkeypatch):
+async def test_local_file_storage_load_nonexistent_allocations(tmp_path, monkeypatch):
     """Test loading allocations when file doesn't exist."""
     from allocator_bot.storage import LocalFileStorage
-    
+
     monkeypatch.setattr("allocator_bot.storage.config.data_folder_path", str(tmp_path))
-    
+
     storage = LocalFileStorage()
-    allocations = storage.load_allocations()
+    allocations = await storage.load_allocations()
     assert allocations == {}
 
 
-def test_local_file_storage_load_nonexistent_tasks(tmp_path, monkeypatch):
+async def test_local_file_storage_load_nonexistent_tasks(tmp_path, monkeypatch):
     """Test loading tasks when file doesn't exist."""
     from allocator_bot.storage import LocalFileStorage
-    
+
     monkeypatch.setattr("allocator_bot.storage.config.data_folder_path", str(tmp_path))
-    
+
     storage = LocalFileStorage()
-    tasks = storage.load_tasks()
+    tasks = await storage.load_tasks()
     assert tasks == {}
 
 
-def test_cloud_object_storage_s3_error_handling(mock_s3_client, mock_config_s3_enabled):
+async def test_cloud_object_storage_s3_error_handling(
+    mock_s3_client, mock_config_s3_enabled
+):
     """Test CloudObjectStorage handles S3 errors properly."""
-    from allocator_bot.storage import CloudObjectStorage
     from botocore.exceptions import ClientError
-    
+
+    from allocator_bot.storage import CloudObjectStorage
+
     storage = CloudObjectStorage()
-    
+
     # Test S3 error other than NoSuchKey
     mock_s3_client.get_object.side_effect = ClientError(
         {"Error": {"Code": "AccessDenied"}}, "GetObject"
     )
-    
+
     with pytest.raises(ClientError):
-        storage.load_allocations()
+        await storage.load_allocations()
 
 
-def test_cloud_object_storage_load_tasks_error(mock_s3_client, mock_config_s3_enabled):
+async def test_cloud_object_storage_load_tasks_error(
+    mock_s3_client, mock_config_s3_enabled
+):
     """Test CloudObjectStorage handles task loading errors."""
-    from allocator_bot.storage import CloudObjectStorage
     from botocore.exceptions import ClientError
-    
+
+    from allocator_bot.storage import CloudObjectStorage
+
     storage = CloudObjectStorage()
-    
+
     # Test S3 error other than NoSuchKey
     mock_s3_client.get_object.side_effect = ClientError(
         {"Error": {"Code": "AccessDenied"}}, "GetObject"
     )
-    
+
     with pytest.raises(ClientError):
-        storage.load_tasks()
+        await storage.load_tasks()
 
 
-def test_cloud_object_storage_load_tasks_no_key(mock_s3_client, mock_config_s3_enabled):
+async def test_cloud_object_storage_load_tasks_no_key(
+    mock_s3_client, mock_config_s3_enabled
+):
     """Test CloudObjectStorage returns empty dict when tasks file doesn't exist."""
-    from allocator_bot.storage import CloudObjectStorage
     from botocore.exceptions import ClientError
-    
+
+    from allocator_bot.storage import CloudObjectStorage
+
     storage = CloudObjectStorage()
-    
+
     # Simulate NoSuchKey error for tasks
     mock_s3_client.get_object.side_effect = ClientError(
         {"Error": {"Code": "NoSuchKey"}}, "GetObject"
     )
-    
-    tasks = storage.load_tasks()
+
+    tasks = await storage.load_tasks()
     assert tasks == {}
 
 
-def test_save_task_function(mock_s3_client, mock_config_s3_enabled):
+async def test_save_task_function(mock_s3_client, mock_config_s3_enabled):
     """Test the save_task function."""
     from allocator_bot.storage import save_task
-    
+
     # Mock existing tasks
     mock_s3_client.get_object.return_value = {
-        "Body": MagicMock(read=lambda: json.dumps({"existing_task": {"data": "value"}}).encode("utf-8"))
+        "Body": MagicMock(
+            read=lambda: json.dumps({"existing_task": {"data": "value"}}).encode(
+                "utf-8"
+            )
+        )
     }
-    
+
     task_id = "new_task_123"
     task_data = {"optimization": "max_sharpe", "symbols": ["AAPL", "GOOGL"]}
-    
-    result = save_task(task_id, task_data)
-    
+
+    result = await save_task(task_id, task_data)
+
     assert result == task_id
     mock_s3_client.put_object.assert_called_once()
     call_args = mock_s3_client.put_object.call_args
     assert call_args[1]["Bucket"] == "test-bucket"
     assert call_args[1]["Key"] == "tasks.json"
-    
+
     saved_data = json.loads(call_args[1]["Body"])
     assert saved_data[task_id] == task_data
     assert "existing_task" in saved_data
 
 
-def test_load_tasks_function(mock_s3_client, mock_config_s3_enabled):
+async def test_load_tasks_function(mock_s3_client, mock_config_s3_enabled):
     """Test the load_tasks function."""
     from allocator_bot.storage import load_tasks
-    
+
     expected_tasks = {"task1": {"data": "value1"}, "task2": {"data": "value2"}}
     mock_s3_client.get_object.return_value = {
         "Body": MagicMock(read=lambda: json.dumps(expected_tasks).encode("utf-8"))
     }
-    
-    tasks = load_tasks()
+
+    tasks = await load_tasks()
     assert tasks == expected_tasks

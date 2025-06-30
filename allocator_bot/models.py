@@ -4,11 +4,11 @@ from pydantic import BaseModel, Field, field_validator
 class AppConfig(BaseModel):
     """Application configuration loaded from environment variables."""
 
-    agent_host_url: str | None = Field(
+    agent_host_url: str = Field(
         description="The host URL and port number where the app is running."
     )
-    app_api_key: str | None = Field(description="The API key to access the bot.")
-    openrouter_api_key: str | None = Field(
+    app_api_key: str = Field(description="The API key to access the bot.")
+    openrouter_api_key: str = Field(
         description="OpenRouter API key for AI functionality."
     )
     s3_enabled: bool | None = Field(

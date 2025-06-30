@@ -1,16 +1,31 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer
 from openbb_ai.models import QueryRequest  # type: ignore[import-untyped]
 from sse_starlette.sse import EventSourceResponse
 
 from .agent import execution_loop
 from .config import config
 from .storage import load_allocations
+from .utils import validate_api_key
 
 app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    if not validate_api_key(token=token, api_key=config.app_api_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return token
+
 
 # Configure CORS
 origins = [
@@ -34,13 +49,13 @@ logging.info("Startup complete")
 
 
 @app.get("/", openapi_extra={"widget_config": {"exclude": True}})
-def read_root():
+async def read_root():
     return {"info": "Asset basket allocator"}
 
 
 @app.get("/agents.json", openapi_extra={"widget_config": {"exclude": True}})
-def get_agent_description():
-    """Widgets configuration file for the OpenBB Terminal Pro"""
+async def get_agent_description():
+    """Agents configuration file for the OpenBB Workspace"""
     return JSONResponse(
         content={
             "allocator_bot": {
@@ -128,11 +143,11 @@ def get_agent_description():
         }
     },
 )
-def get_allocation_data(
+async def get_allocation_data(
     allocation_id: str | None = None,
     risk_model: str | None = None,
     weights_or_quantities: str = "weights",
-    # header: str = Depends(require_api_key(api_key=config.app_api_key)),
+    token: str = Depends(get_current_user),
 ) -> JSONResponse:
     """Fetch allocation data.
 
@@ -142,7 +157,7 @@ def get_allocation_data(
         return JSONResponse(content={"error": "Allocation ID is required"})
 
     allocations = {}
-    allocations = load_allocations()
+    allocations = await load_allocations()
 
     selected_allocation = allocations.get(
         allocation_id, [{"Ticker": "N/A", "Quantity": 0}]
@@ -172,7 +187,9 @@ def get_allocation_data(
 
 
 @app.post("/v1/query")
-async def query(request: QueryRequest) -> EventSourceResponse:
+async def query(
+    request: QueryRequest, token: str = Depends(get_current_user)
+) -> EventSourceResponse:
     """Query the Allocator Bot."""
     return EventSourceResponse(
         (event.model_dump() async for event in execution_loop(request))

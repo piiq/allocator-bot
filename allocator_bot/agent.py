@@ -1,5 +1,5 @@
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Callable
 
 from magentic import (
     AssistantMessage,
@@ -70,6 +70,23 @@ async def _need_to_allocate_portfolio(conversation: str) -> bool: ...  # type: i
 async def _get_task_structure(conversation: str) -> TaskStructure: ...  # type: ignore[empty-body]
 
 
+def make_llm(chat_messages: list) -> Callable:
+    @chatprompt(
+        SystemMessage(SYSTEM_PROMPT),
+        *chat_messages,
+        model=OpenRouterChatModel(
+            model="deepseek/deepseek-chat-v3-0324",
+            temperature=0.7,
+            provider_sort="latency",
+            require_parameters=True,
+        ),
+        max_retries=5,
+    )
+    async def _llm() -> AsyncStreamedStr | str: ...  # type: ignore[empty-body]
+
+    return _llm
+
+
 async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]:
     """Process the query and generate responses."""
 
@@ -79,13 +96,13 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
         if message.role == "ai":
             if hasattr(message, "content") and isinstance(message.content, str):
                 chat_messages.append(
-                    AssistantMessage(content=sanitize_message(message.content))
+                    AssistantMessage(content=await sanitize_message(message.content))
                 )
         elif message.role == "human":
             if hasattr(message, "content") and isinstance(message.content, str):
-                user_message_content = sanitize_message(message.content)
+                user_message_content = await sanitize_message(message.content)
                 chat_messages.append(UserMessage(content=user_message_content))
-            if is_last_message(message, request.messages):
+            if await is_last_message(message, request.messages):
 
                 # I intentionally am not using function calling in this example
                 # because I want all the logic that is under the hood to be exposed
@@ -114,7 +131,7 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
 
                     allocation = None
                     try:
-                        allocation = prepare_allocation(**task_dict)
+                        allocation = await prepare_allocation(**task_dict)
 
                     except Exception as e:
                         yield reasoning_step(
@@ -134,14 +151,14 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                                 message="Basket weights optimized. Saving allocation...",
                             )
 
-                            allocation_id = save_allocation(
-                                allocation_id=generate_id(length=2),
+                            allocation_id = await save_allocation(
+                                allocation_id=await generate_id(length=2),
                                 allocation_data=allocation.to_dict(orient="records"),
                             )
 
                             task_to_save = task_structure.model_dump()
                             task_to_save.pop("task")
-                            save_task(
+                            await save_task(
                                 allocation_id=allocation_id,
                                 task_data=task_to_save,
                             )
@@ -196,20 +213,7 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                                 event_type="ERROR",
                                 message=f"Error saving allocation. {str(e)}",
                             )
-
-    @chatprompt(
-        SystemMessage(SYSTEM_PROMPT),
-        *chat_messages,
-        model=OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
-            temperature=0.7,
-            provider_sort="latency",
-            require_parameters=True,
-        ),
-        max_retries=5,
-    )
-    async def _llm() -> AsyncStreamedStr | str: ...  # type: ignore[empty-body]
-
+    _llm = make_llm(chat_messages)
     llm_result = await _llm()
 
     if isinstance(llm_result, str):

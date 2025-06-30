@@ -19,26 +19,26 @@ class LocalFileStorage:
         self.allocations_file = os.path.join(self.data_folder_path, "allocations.json")
         self.tasks_file = os.path.join(self.data_folder_path, "tasks.json")
 
-    def load_allocations(self) -> dict:
+    async def load_allocations(self) -> dict:
         """Load allocations from a local file."""
         if not os.path.exists(self.allocations_file):
             return {}
         with open(self.allocations_file, "r") as f:
             return json.load(f)
 
-    def save_allocations(self, allocations: dict) -> None:
+    async def save_allocations(self, allocations: dict) -> None:
         """Save allocations to a local file."""
         with open(self.allocations_file, "w") as f:
             json.dump(allocations, f, indent=4)
 
-    def load_tasks(self) -> dict:
+    async def load_tasks(self) -> dict:
         """Load tasks from a local file."""
         if not os.path.exists(self.tasks_file):
             return {}
         with open(self.tasks_file, "r") as f:
             return json.load(f)
 
-    def save_tasks(self, tasks: dict) -> None:
+    async def save_tasks(self, tasks: dict) -> None:
         """Save tasks to a local file."""
         with open(self.tasks_file, "w") as f:
             json.dump(tasks, f, indent=4)
@@ -58,7 +58,7 @@ class CloudObjectStorage:
         self.allocation_data_file = config.allocation_data_file
         self.task_data_file = config.task_data_file
 
-    def load_allocations(self) -> dict:
+    async def load_allocations(self) -> dict:
         """Load allocations.json from S3 bucket."""
         try:
             obj = self.s3.get_object(
@@ -70,7 +70,7 @@ class CloudObjectStorage:
                 return {}
             raise
 
-    def save_allocations(self, allocations: dict) -> None:
+    async def save_allocations(self, allocations: dict) -> None:
         """Save allocations to S3 bucket."""
         self.s3.put_object(
             Bucket=config.s3_bucket_name,
@@ -78,7 +78,7 @@ class CloudObjectStorage:
             Body=json.dumps(allocations, indent=4),
         )
 
-    def load_tasks(self) -> dict:
+    async def load_tasks(self) -> dict:
         """Load tasks.json from S3 bucket."""
         try:
             obj = self.s3.get_object(Bucket=self.bucket_name, Key=self.task_data_file)
@@ -88,7 +88,7 @@ class CloudObjectStorage:
                 return {}
             raise
 
-    def save_tasks(self, tasks: dict) -> None:
+    async def save_tasks(self, tasks: dict) -> None:
         """Save tasks to S3 bucket."""
         self.s3.put_object(
             Bucket=self.bucket_name,
@@ -97,7 +97,7 @@ class CloudObjectStorage:
         )
 
 
-def get_storage() -> LocalFileStorage | CloudObjectStorage:
+async def get_storage() -> LocalFileStorage | CloudObjectStorage:
     """Get the appropriate storage class based on configuration."""
     if config.s3_enabled:
         return CloudObjectStorage()
@@ -105,31 +105,31 @@ def get_storage() -> LocalFileStorage | CloudObjectStorage:
         return LocalFileStorage()
 
 
-def save_task(allocation_id: str, task_data: dict) -> str:
+async def save_task(allocation_id: str, task_data: dict) -> str:
     """Save a new task."""
-    storage: LocalFileStorage | CloudObjectStorage = get_storage()
-    tasks = storage.load_tasks()
+    storage: LocalFileStorage | CloudObjectStorage = await get_storage()
+    tasks = await storage.load_tasks()
     tasks[allocation_id] = task_data
-    storage.save_tasks(tasks)
+    await storage.save_tasks(tasks)
     return allocation_id
 
 
-def save_allocation(allocation_id: str, allocation_data: list[dict]) -> str:
+async def save_allocation(allocation_id: str, allocation_data: list[dict]) -> str:
     """Save the allocation to a json file."""
-    storage: LocalFileStorage | CloudObjectStorage = get_storage()
-    allocations = storage.load_allocations()
+    storage: LocalFileStorage | CloudObjectStorage = await get_storage()
+    allocations = await storage.load_allocations()
     allocations[allocation_id] = allocation_data
-    storage.save_allocations(allocations)
+    await storage.save_allocations(allocations)
     return allocation_id
 
 
-def load_allocations() -> dict:
+async def load_allocations() -> dict:
     """Load allocations from the configured storage."""
-    storage: LocalFileStorage | CloudObjectStorage = get_storage()
-    return storage.load_allocations()
+    storage: LocalFileStorage | CloudObjectStorage = await get_storage()
+    return await storage.load_allocations()
 
 
-def load_tasks() -> dict:
+async def load_tasks() -> dict:
     """Load tasks from the configured storage."""
-    storage: LocalFileStorage | CloudObjectStorage = get_storage()
-    return storage.load_tasks()
+    storage: LocalFileStorage | CloudObjectStorage = await get_storage()
+    return await storage.load_tasks()

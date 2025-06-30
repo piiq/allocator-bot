@@ -49,3 +49,16 @@ allow-direct-references = true
 
 [tool.hatch.build]
 include = ["allocator_bot/**"]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.9.1",
+    "httpx>=0.28.1",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.2.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=allocator_bot --cov-report=term-missing"

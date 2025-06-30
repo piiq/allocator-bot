@@ -4,5 +4,4 @@
 **/*.pyc
 **/data/**/*
 *.log
-.aider.*
-.aider*
+.coverage
