@@ -1,14 +1,6 @@
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
-
-# Set required environment variables for testing
-os.environ["DATA_FOLDER_PATH"] = "/tmp/test"
-os.environ["FMP_API_KEY"] = "test_key"
-os.environ["OPENROUTER_API_KEY"] = "test_key"
-os.environ["AGENT_HOST_URL"] = "http://localhost:8000"
-os.environ["APP_API_KEY"] = "test_key"
 
 from allocator_bot.portfolio import (
     calculate_quantities,

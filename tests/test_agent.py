@@ -34,26 +34,26 @@ class TestExecutionLoop:
         # This mock, when called, will return our other mock (the callable).
         mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            make_llm=mock_make_llm,
         ):
-            with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                events = []
-                async for event in execution_loop(request):
-                    events.append(event)
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
 
-                assert len(events) == 1
-                # The event from `message_chunk` is a `MessageChunkSSE` object.
-                # The text content is in the `data.delta` attribute.
-                assert hasattr(events[0], "data")
-                assert hasattr(events[0].data, "delta")
-                assert events[0].data.delta == "Portfolio optimization is..."
+            assert len(events) == 1
+            # The event from `message_chunk` is a `MessageChunkSSE` object.
+            # The text content is in the `data.delta` attribute.
+            assert hasattr(events[0], "data")
+            assert hasattr(events[0].data, "delta")
+            assert events[0].data.delta == "Portfolio optimization is..."
 
-                # Assert that make_llm was called to create the LLM
-                mock_make_llm.assert_called_once()
-                # Assert that the llm was called
-                mock_llm_callable.assert_awaited_once()
+            # Assert that make_llm was called to create the LLM
+            mock_make_llm.assert_called_once()
+            # Assert that the llm was called
+            mock_llm_callable.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_execution_loop_with_ai_messages(self):
@@ -95,44 +95,25 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return True
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            with patch(
-                "allocator_bot.agent._get_task_structure",
-                new=AsyncMock(return_value=task_structure),
-            ):
-                with patch(
-                    "allocator_bot.agent.prepare_allocation",
-                    return_value=mock_allocation,
-                ):
-                    with patch(
-                        "allocator_bot.agent.save_allocation",
-                        return_value="test_id_123",
-                    ):
-                        with patch(
-                            "allocator_bot.agent.save_task", return_value="test_id_123"
-                        ):
-                            with patch(
-                                "allocator_bot.agent.generate_id",
-                                return_value="test_id",
-                            ):
-                                mock_llm_callable = AsyncMock(
-                                    return_value="Portfolio created successfully"
-                                )
-                                mock_make_llm = MagicMock(
-                                    return_value=mock_llm_callable
-                                )
-                                with patch(
-                                    "allocator_bot.agent.make_llm", new=mock_make_llm
-                                ):
-                                    events = []
-                                    async for event in execution_loop(request):
-                                        events.append(event)
+        mock_llm_callable = AsyncMock(return_value="Portfolio created successfully")
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                                    # Should have multiple events: reasoning steps, table, message chunks
-                                    assert len(events) > 5
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            _get_task_structure=AsyncMock(return_value=task_structure),
+            prepare_allocation=AsyncMock(return_value=mock_allocation),
+            save_allocation=AsyncMock(return_value="test_id_123"),
+            save_task=AsyncMock(return_value="test_id_123"),
+            generate_id=MagicMock(return_value="test_id"),
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # Should have multiple events: reasoning steps, table, message chunks
+            assert len(events) > 5
 
     @pytest.mark.asyncio
     async def test_execution_loop_allocation_error(self):
@@ -152,34 +133,29 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return True
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            with patch(
-                "allocator_bot.agent._get_task_structure",
-                new=AsyncMock(return_value=task_structure),
-            ):
-                with patch(
-                    "allocator_bot.agent.prepare_allocation",
-                    side_effect=Exception("Data fetch failed"),
-                ):
-                    mock_llm_callable = AsyncMock(return_value="Error occurred")
-                    mock_make_llm = MagicMock(return_value=mock_llm_callable)
-                    with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                        events = []
-                        async for event in execution_loop(request):
-                            events.append(event)
+        mock_llm_callable = AsyncMock(return_value="Error occurred")
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                        # Should have error reasoning step
-                        error_events = [
-                            e
-                            for e in events
-                            if hasattr(e, "data")
-                            and hasattr(e.data, "eventType")
-                            and e.data.eventType == "ERROR"
-                        ]
-                        assert len(error_events) > 0
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            _get_task_structure=AsyncMock(return_value=task_structure),
+            prepare_allocation=MagicMock(side_effect=Exception("Data fetch failed")),
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # Should have error reasoning step
+            error_events = [
+                e
+                for e in events
+                if hasattr(e, "data")
+                and hasattr(e.data, "eventType")
+                and e.data.eventType == "ERROR"
+            ]
+            assert len(error_events) > 0
 
     @pytest.mark.asyncio
     async def test_execution_loop_save_allocation_error(self):
@@ -208,38 +184,30 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return True
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            with patch(
-                "allocator_bot.agent._get_task_structure",
-                new=AsyncMock(return_value=task_structure),
-            ):
-                with patch(
-                    "allocator_bot.agent.prepare_allocation",
-                    return_value=mock_allocation,
-                ):
-                    with patch(
-                        "allocator_bot.agent.save_allocation",
-                        side_effect=Exception("Save failed"),
-                    ):
-                        mock_llm_callable = AsyncMock(return_value="Error saving")
-                        mock_make_llm = MagicMock(return_value=mock_llm_callable)
-                        with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                            events = []
-                            async for event in execution_loop(request):
-                                events.append(event)
+        mock_llm_callable = AsyncMock(return_value="Error saving")
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                            # Should have error reasoning step for save failure
-                            error_events = [
-                                e
-                                for e in events
-                                if hasattr(e, "data")
-                                and hasattr(e.data, "eventType")
-                                and e.data.eventType == "ERROR"
-                            ]
-                            assert len(error_events) > 0
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            _get_task_structure=AsyncMock(return_value=task_structure),
+            prepare_allocation=AsyncMock(return_value=mock_allocation),
+            save_allocation=MagicMock(side_effect=Exception("Save failed")),
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # Should have error reasoning step for save failure
+            error_events = [
+                e
+                for e in events
+                if hasattr(e, "data")
+                and hasattr(e.data, "eventType")
+                and e.data.eventType == "ERROR"
+            ]
+            assert len(error_events) > 0
 
     @pytest.mark.asyncio
     async def test_execution_loop_string_llm_result(self):
@@ -253,20 +221,21 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return False
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            mock_llm_callable = AsyncMock(
-                return_value="Diversification is a risk management strategy"
-            )
-            mock_make_llm = MagicMock(return_value=mock_llm_callable)
-            with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                events = []
-                async for event in execution_loop(request):
-                    events.append(event)
+        mock_llm_callable = AsyncMock(
+            return_value="Diversification is a risk management strategy"
+        )
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                assert len(events) >= 1
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            assert len(events) >= 1
 
     @pytest.mark.asyncio
     async def test_execution_loop_streamed_llm_result(self):
@@ -289,19 +258,20 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return False
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            mock_llm_callable = AsyncMock(return_value=mock_streamed_str)
-            mock_make_llm = MagicMock(return_value=mock_llm_callable)
-            with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                events = []
-                async for event in execution_loop(request):
-                    events.append(event)
+        mock_llm_callable = AsyncMock(return_value=mock_streamed_str)
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                # Should have multiple chunks
-                assert len(events) >= 3
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # Should have multiple chunks
+            assert len(events) >= 3
 
     @pytest.mark.asyncio
     async def test_execution_loop_with_citations(self):
@@ -340,51 +310,31 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return True
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            with patch(
-                "allocator_bot.agent._get_task_structure",
-                new=AsyncMock(return_value=task_structure),
-            ):
-                with patch(
-                    "allocator_bot.agent.prepare_allocation",
-                    return_value=mock_allocation,
-                ):
-                    with patch(
-                        "allocator_bot.agent.save_allocation",
-                        new=AsyncMock(return_value="citation_test_id"),
-                    ):
-                        with patch(
-                            "allocator_bot.agent.save_task",
-                            new=AsyncMock(return_value="citation_test_id"),
-                        ):
-                            with patch(
-                                "allocator_bot.agent.generate_id",
-                                new=AsyncMock(return_value="citation_test"),
-                            ):
-                                mock_llm_callable = AsyncMock(
-                                    return_value="Portfolio created successfully"
-                                )
-                                mock_make_llm = MagicMock(
-                                    return_value=mock_llm_callable
-                                )
-                                with patch(
-                                    "allocator_bot.agent.make_llm", new=mock_make_llm
-                                ):
-                                    events = []
-                                    async for event in execution_loop(request):
-                                        events.append(event)
+        mock_llm_callable = AsyncMock(return_value="Portfolio created successfully")
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                                    # Should have citations at the end
-                                    citation_events = [
-                                        e
-                                        for e in events
-                                        if hasattr(e, "event")
-                                        and e.event == "copilotCitationCollection"
-                                    ]
-                                    assert len(citation_events) > 0
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            _get_task_structure=AsyncMock(return_value=task_structure),
+            prepare_allocation=AsyncMock(return_value=mock_allocation),
+            save_allocation=AsyncMock(return_value="citation_test_id"),
+            save_task=AsyncMock(return_value="citation_test_id"),
+            generate_id=AsyncMock(return_value="citation_test"),
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # Should have citations at the end
+            citation_events = [
+                e
+                for e in events
+                if hasattr(e, "event")
+                and e.event == "copilotCitationCollection"
+            ]
+            assert len(citation_events) > 0
 
     @pytest.mark.asyncio
     async def test_execution_loop_message_content_handling(self):
@@ -398,23 +348,22 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return False
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            with patch(
-                "allocator_bot.agent.sanitize_message",
-                return_value="Test message with {{braces}}",
-            ) as mock_sanitize:
-                mock_llm_callable = AsyncMock(return_value="Response")
-                mock_make_llm = MagicMock(return_value=mock_llm_callable)
-                with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                    events = []
-                    async for event in execution_loop(request):
-                        events.append(event)
+        mock_llm_callable = AsyncMock(return_value="Response")
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
+        mock_sanitize = AsyncMock(return_value="Test message with {{braces}}")
 
-                    # sanitize_message should have been called
-                    mock_sanitize.assert_called()
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            sanitize_message=mock_sanitize,
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # sanitize_message should have been called
+            mock_sanitize.assert_called()
 
     @pytest.mark.asyncio
     async def test_execution_loop_message_without_content(self):
@@ -427,16 +376,17 @@ class TestExecutionLoop:
         async def mock_need_to_allocate_portfolio(*args, **kwargs):
             return False
 
-        with patch(
-            "allocator_bot.agent._need_to_allocate_portfolio",
-            new=mock_need_to_allocate_portfolio,
-        ):
-            mock_llm_callable = AsyncMock(return_value="Response")
-            mock_make_llm = MagicMock(return_value=mock_llm_callable)
-            with patch("allocator_bot.agent.make_llm", new=mock_make_llm):
-                events = []
-                async for event in execution_loop(request):
-                    events.append(event)
+        mock_llm_callable = AsyncMock(return_value="Response")
+        mock_make_llm = MagicMock(return_value=mock_llm_callable)
 
-                # Should not crash and should produce some events
-                assert len(events) >= 1
+        with patch.multiple(
+            "allocator_bot.agent",
+            _need_to_allocate_portfolio=mock_need_to_allocate_portfolio,
+            make_llm=mock_make_llm,
+        ):
+            events = []
+            async for event in execution_loop(request):
+                events.append(event)
+
+            # Should not crash and should produce some events
+            assert len(events) >= 1
