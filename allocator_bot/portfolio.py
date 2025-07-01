@@ -5,11 +5,16 @@ import pandas as pd
 from openbb import obb  # type: ignore
 from pypfopt import EfficientFrontier, expected_returns, risk_models  # type: ignore
 
+from .config import config
+
 
 async def fetch_historical_prices(
     tickers: list[str], start_date: str = "1998-01-01", end_date: str | None = None
 ) -> pd.DataFrame:
     """Fetch historical prices for a list of tickers."""
+    if obb.user.credentials.fmp_api_key is None:
+        obb.user.credentials.fmp_api_key = config.fmp_api_key
+
     if end_date is None:
         end_date = datetime.today().strftime("%Y-%m-%d")
 

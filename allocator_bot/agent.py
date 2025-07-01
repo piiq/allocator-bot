@@ -148,7 +148,7 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                     if allocation is not None:
                         try:
                             yield reasoning_step(
-                                message="Basket weights optimized. Saving allocation...",
+                                message="Basket weights optimized. Saving task and results...",
                             )
 
                             allocation_id = await save_allocation(
