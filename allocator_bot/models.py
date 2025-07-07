@@ -31,6 +31,18 @@ class AppConfig(BaseModel):
         default=None, description="Financial Modeling Prep API key for data retrieval."
     )
 
+    @field_validator(
+        "agent_host_url", "app_api_key", "openrouter_api_key", mode="before"
+    )
+    def validate_required_env_vars(cls, value: str | None, info) -> str | None:
+        """Validate required environment variables.
+
+        Raises ValueError if any required variable is not set.
+        """
+        if not value:
+            raise ValueError(f"{info.field_name} environment variable is required.")
+        return value
+
     @field_validator("data_folder_path")
     def validate_data_folder_path(cls, value: str | None, info) -> str | None:
         """Validate the data folder path.
