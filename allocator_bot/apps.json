@@ -1,0 +1,47 @@
+{
+  "name": "Allocator Bot",
+  "img": "",
+  "img_dark": "",
+  "img_light": "",
+  "description": "The Asset Allocator Bot can perform simple portfolio optimization tasks and allocation tasks",
+  "allowCustomization": true,
+  "tabs": {
+    "": {
+      "id": "",
+      "name": "",
+      "layout": [
+        {
+          "i": "task-data",
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "h": 15,
+          "state": {
+            "chartView": {
+              "enabled": false,
+              "chartType": "line"
+            },
+            "columnState": {
+              "default": {
+                "columnOrder": {
+                  "orderedColIds": [
+                    "Task ID",
+                    "Timestamp",
+                    "Assets",
+                    "Investment",
+                    "Start Date",
+                    "End Date",
+                    "Risk Free Rate",
+                    "Target Return",
+                    "Target Volatility"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "groups": []
+}

@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -72,6 +74,16 @@ async def get_agent_description():
             }
         }
     )
+
+
+@app.get("/apps.json", openapi_extra={"widget_config": {"exclude": True}})
+async def get_apps_description():
+    """Apps configuration file for the OpenBB Workspace"""
+    with open(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "apps.json")), "r"
+    ) as f:
+        apps_config = json.load(f)
+    return JSONResponse(content=apps_config)
 
 
 @app.get(
