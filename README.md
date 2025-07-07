@@ -1,7 +1,7 @@
 # Allocator Bot
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/2baee09d-0813-4e44-bc72-b7ef74a818b2" width="250px" />
+  <img width="250px" alt="allocator-bot" src="https://github.com/user-attachments/assets/2baee09d-0813-4e44-bc72-b7ef74a818b2" />
 </p>
 
 A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate efficient frontier allocations.
@@ -9,9 +9,8 @@ A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate
 ## Features
 
 <p align="center">
-   <img width="1482" alt="image" src="https://github.com/user-attachments/assets/b380c409-6569-47a1-ba73-cfd00d890e6f" />
+   <img width="1482" alt="dashboard" src="https://github.com/user-attachments/assets/b380c409-6569-47a1-ba73-cfd00d890e6f" />
 </p>
-
 
 - **OpenBB Integration**:
   - Plugs into OpenBB Workspace's copilot and widget interfaces
@@ -38,15 +37,46 @@ A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate
   - Pydantic for data validation
   - Magentic for LLM interactions
 
-## Installation
+## Installation & Usage
 
-### Install with pip from GitHub
+### Docker (Recommended)
+
+The easiest way to run the Allocator Bot is using Docker:
+
+```bash
+docker run --rm -it --name allocator-bot \
+  -e HOST_URL=http://localhost:4322 \
+  -e APP_API_KEY=your_api_key \
+  -e OPENROUTER_API_KEY=your_openrouter_key \
+  -e FMP_API_KEY=your_fmp_key \
+  -e DATA_FOLDER_PATH=data \
+  -e S3_ENABLED=false \
+  -p 4299:4299 \
+  ghcr.io/piiq/allocator-bot:latest
+```
+
+**Required Environment Variables:**
+
+- `HOST_URL`: The host URL where the app is running (e.g., `http://localhost:4322`)
+- `APP_API_KEY`: Your API key to access the bot
+- `OPENROUTER_API_KEY`: Your OpenRouter API key for LLM access
+- `FMP_API_KEY`: Your Financial Modeling Prep API key for market data
+
+**Optional Environment Variables:**
+
+- `DATA_FOLDER_PATH`: Local storage path (default: `data`)
+- `S3_ENABLED`: Enable S3 storage (default: `false`)
+- `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_NAME`: S3 configuration (if enabled)
+
+### Alternative Installation Methods
+
+#### Install with pip from GitHub
 
 ```bash
 pip install git+https://github.com/piiq/allocator-bot.git
 ```
 
-### Install for development with uv
+#### Development Installation
 
 1. Clone the repository:
 
@@ -55,23 +85,18 @@ pip install git+https://github.com/piiq/allocator-bot.git
    cd allocator-bot
    ```
 
-2. Install dependencies using Poetry:
+2. Install dependencies:
 
    ```bash
-   uv sync
+   uv sync --extra dev
    ```
 
-## Configuration
+3. Copy `.env.example` to `.env` and fill in the values
+4. Start the server:
 
-- Copy `.env.example` to `.env` and fill in the values.
-
-## Usage
-
-Start the server on localhost:
-
-```bash
-allocator-bot
-```
+   ```bash
+   allocator-bot
+   ```
 
 ### Adding to OpenBB Workspace
 
@@ -79,17 +104,16 @@ allocator-bot
 
    - Click on the OpenBB Copilot dropdown
    - Click "Add Copilot"
-   - Enter the server URL (e.g., `http://localhost:4322` for local deployment)
-   - Add authorization header with the API key from `API_KEYS_FILE_PATH`
+   - Enter the server URL (e.g., `http://localhost:4299` for Docker deployment)
+   - Add authorization header with your API key
      - Header name: `Authorization`
-     - Header value: `Bearer <API_KEY>`
+     - Header value: `Bearer <your_api_key>` (same as `APP_API_KEY` environment variable)
    - Click "Create"
 
-2. **Add as a Widget Source**:
+2. **Add as a an App and Widget Source**:
 
-   - Click "Add Data" on your dashboard
-   - Go to "Custom Backends"
-   - Select "Allocator Bot Backend"
+   - Click "Apps" on your dashboard
+   - Click "Connect Backend" on the Apps page
    - Enter the same URL and API key used for the copilot
    - Click "Add"
 
