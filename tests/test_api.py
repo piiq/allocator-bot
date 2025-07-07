@@ -207,6 +207,269 @@ async def test_get_allocation_data_nonexistent_id(async_client):
 
 
 @pytest.mark.asyncio
+async def test_get_task_data_empty(async_client):
+    """Test getting task data when no tasks exist."""
+    from unittest.mock import patch
+
+    headers = {"Authorization": "Bearer test_key"}
+    with patch("allocator_bot.api.load_tasks", return_value={}):
+        response = await async_client.get("/task_data", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "tasks" in data
+        assert data["tasks"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_task_data_basic(async_client):
+    """Test getting basic task data without filters."""
+    from unittest.mock import patch
+
+    mock_tasks = {
+        "task_1": {
+            "timestamp": "2024-01-15T10:30:00",
+            "asset_symbols": ["AAPL", "GOOGL"],
+            "total_investment": 100000,
+            "start_date": "2023-01-01",
+            "end_date": "2024-01-01",
+            "risk_free_rate": 0.05,
+            "target_return": 0.15,
+            "target_volatility": 0.20,
+        },
+        "task_2": {
+            "timestamp": "2024-01-10T14:20:00",
+            "asset_symbols": ["MSFT", "TSLA"],
+            "total_investment": 50000,
+            "start_date": "2023-06-01",
+            "end_date": "2024-06-01",
+            "risk_free_rate": 0.04,
+            "target_return": 0.12,
+            "target_volatility": 0.18,
+        },
+    }
+
+    headers = {"Authorization": "Bearer test_key"}
+    with patch("allocator_bot.api.load_tasks", return_value=mock_tasks):
+        response = await async_client.get("/task_data", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "tasks" in data
+        assert len(data["tasks"]) == 2
+
+        # Check data formatting
+        task = data["tasks"][0]  # Should be sorted by timestamp desc (newest first)
+        assert "Task ID" in task
+        assert "Timestamp" in task
+        assert "Assets" in task
+        assert "Investment" in task
+        assert task["Investment"] == "$100,000.00"
+        assert task["Assets"] == "AAPL, GOOGL"
+        assert task["Risk Free Rate"] == "5.0%"
+
+
+@pytest.mark.asyncio
+async def test_get_task_data_date_filter(async_client):
+    """Test getting task data with date filters."""
+    from unittest.mock import patch
+
+    mock_tasks = {
+        "task_1": {
+            "timestamp": "2024-01-15T10:30:00",
+            "asset_symbols": ["AAPL"],
+            "total_investment": 100000,
+            "start_date": "2023-01-01",
+            "end_date": "2024-01-01",
+            "risk_free_rate": 0.05,
+            "target_return": 0.15,
+            "target_volatility": 0.20,
+        },
+        "task_2": {
+            "timestamp": "2024-01-10T14:20:00",
+            "asset_symbols": ["MSFT"],
+            "total_investment": 50000,
+            "start_date": "2023-06-01",
+            "end_date": "2024-06-01",
+            "risk_free_rate": 0.04,
+            "target_return": 0.12,
+            "target_volatility": 0.18,
+        },
+        "task_3": {
+            "timestamp": "2024-01-20T09:15:00",
+            "asset_symbols": ["GOOGL"],
+            "total_investment": 75000,
+            "start_date": "2023-01-01",
+            "end_date": "2024-01-01",
+            "risk_free_rate": 0.05,
+            "target_return": 0.15,
+            "target_volatility": 0.20,
+        },
+    }
+
+    headers = {"Authorization": "Bearer test_key"}
+    with patch("allocator_bot.api.load_tasks", return_value=mock_tasks):
+        # Test start_date filter
+        response = await async_client.get(
+            "/task_data?start_date=2024-01-12", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 2  # task_1 and task_3
+
+        # Test end_date filter
+        response = await async_client.get(
+            "/task_data?end_date=2024-01-12", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 1  # only task_2
+
+        # Test date range filter
+        response = await async_client.get(
+            "/task_data?start_date=2024-01-12&end_date=2024-01-18", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 1  # only task_1
+
+
+@pytest.mark.asyncio
+async def test_get_task_data_symbol_filter(async_client):
+    """Test getting task data with symbol search filter."""
+    from unittest.mock import patch
+
+    mock_tasks = {
+        "task_1": {
+            "timestamp": "2024-01-15T10:30:00",
+            "asset_symbols": ["AAPL", "GOOGL"],
+            "total_investment": 100000,
+            "start_date": "2023-01-01",
+            "end_date": "2024-01-01",
+            "risk_free_rate": 0.05,
+            "target_return": 0.15,
+            "target_volatility": 0.20,
+        },
+        "task_2": {
+            "timestamp": "2024-01-10T14:20:00",
+            "asset_symbols": ["MSFT", "TSLA"],
+            "total_investment": 50000,
+            "start_date": "2023-06-01",
+            "end_date": "2024-06-01",
+            "risk_free_rate": 0.04,
+            "target_return": 0.12,
+            "target_volatility": 0.18,
+        },
+    }
+
+    headers = {"Authorization": "Bearer test_key"}
+    with patch("allocator_bot.api.load_tasks", return_value=mock_tasks):
+        # Test partial symbol match (case insensitive)
+        response = await async_client.get(
+            "/task_data?symbol_search=aapl", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 1
+        assert "AAPL" in data["tasks"][0]["Assets"]
+
+        # Test another symbol
+        response = await async_client.get(
+            "/task_data?symbol_search=MSFT", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 1
+        assert "MSFT" in data["tasks"][0]["Assets"]
+
+        # Test partial match
+        response = await async_client.get(
+            "/task_data?symbol_search=GOO", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 1
+        assert "GOOGL" in data["tasks"][0]["Assets"]
+
+
+@pytest.mark.asyncio
+async def test_get_task_data_combined_filters(async_client):
+    """Test getting task data with combined filters."""
+    from unittest.mock import patch
+
+    mock_tasks = {
+        "task_1": {
+            "timestamp": "2024-01-15T10:30:00",
+            "asset_symbols": ["AAPL", "GOOGL"],
+            "total_investment": 100000,
+            "start_date": "2023-01-01",
+            "end_date": "2024-01-01",
+            "risk_free_rate": 0.05,
+            "target_return": 0.15,
+            "target_volatility": 0.20,
+        },
+        "task_2": {
+            "timestamp": "2024-01-10T14:20:00",
+            "asset_symbols": ["AAPL", "MSFT"],
+            "total_investment": 50000,
+            "start_date": "2023-06-01",
+            "end_date": "2024-06-01",
+            "risk_free_rate": 0.04,
+            "target_return": 0.12,
+            "target_volatility": 0.18,
+        },
+    }
+
+    headers = {"Authorization": "Bearer test_key"}
+    with patch("allocator_bot.api.load_tasks", return_value=mock_tasks):
+        # Test date and symbol filters combined
+        response = await async_client.get(
+            "/task_data?start_date=2024-01-12&symbol_search=AAPL", headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 1  # Only task_1 matches both filters
+        assert "AAPL" in data["tasks"][0]["Assets"]
+
+
+@pytest.mark.asyncio
+async def test_get_task_data_missing_fields(async_client):
+    """Test getting task data with missing or None fields."""
+    from unittest.mock import patch
+
+    mock_tasks = {
+        "task_1": {
+            "timestamp": "2024-01-15T10:30:00",
+            "asset_symbols": ["AAPL"],
+            "total_investment": 100000,
+            # Missing some fields
+        },
+        "task_2": {
+            "timestamp": "2024-01-10T14:20:00",
+            # Missing asset_symbols
+            "total_investment": 50000,
+            "start_date": "2023-06-01",
+            "end_date": None,  # Explicitly None
+            "risk_free_rate": 0.04,
+            "target_return": 0.12,
+            "target_volatility": 0.18,
+        },
+    }
+
+    headers = {"Authorization": "Bearer test_key"}
+    with patch("allocator_bot.api.load_tasks", return_value=mock_tasks):
+        response = await async_client.get("/task_data", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 2
+
+        # Check handling of missing fields
+        for task in data["tasks"]:
+            assert "Task ID" in task
+            assert "Timestamp" in task
+            assert "Assets" in task
+            assert "Investment" in task
+
+
+@pytest.mark.asyncio
 async def test_query_endpoint(async_client):
     """Test the query endpoint (basic structure test)."""
     from unittest.mock import patch
