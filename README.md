@@ -1,8 +1,17 @@
 # Allocator Bot
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/2baee09d-0813-4e44-bc72-b7ef74a818b2" width="250px" />
+</p>
+
 A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate efficient frontier allocations.
 
 ## Features
+
+<p align="center">
+   <img width="1482" alt="image" src="https://github.com/user-attachments/assets/58cf19e9-4aa5-45fa-8b8b-8ed2fb911ffa" />
+</p>
+
 
 - **OpenBB Integration**:
   - Plugs into OpenBB Workspace's copilot and widget interfaces
