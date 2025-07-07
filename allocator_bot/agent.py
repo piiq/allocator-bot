@@ -1,146 +1,144 @@
-import json
 import logging
-from typing import AsyncGenerator
-from uuid import uuid4
-
+from datetime import date
+from typing import AsyncGenerator, Callable
 
 from magentic import (
     AssistantMessage,
     AsyncStreamedStr,
-    OpenaiChatModel,
     SystemMessage,
     UserMessage,
     chatprompt,
     prompt,
 )
-
-from .models import (
-    AgentQueryRequest,
-    ArtifactSSE,
-    ArtifactSSEData,
-    StatusUpdateSSE,
-    StatusUpdateSSEData,
-    TaskStructure,
+from magentic.chat_model.openrouter_chat_model import OpenRouterChatModel
+from magentic.chat_model.retry_chat_model import RetryChatModel
+from openbb_ai.helpers import (  # type: ignore[import-untyped]
+    citations,
+    cite,
+    message_chunk,
+    reasoning_step,
+    table,
 )
+from openbb_ai.models import (  # type: ignore[import-untyped]
+    BaseSSE,
+    QueryRequest,
+    Widget,
+    WidgetParam,
+)
+
+from .models import TaskStructure
+from .portfolio import prepare_allocation
 from .prompts import (
     DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
     PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
     SYSTEM_PROMPT,
 )
-from .utils import is_last_message, sanitize_message, generate_id
-
-from .portfolio import prepare_allocation, save_allocation
+from .storage import save_allocation, save_task
+from .utils import generate_id, is_last_message, sanitize_message
 
 logger = logging.getLogger(__name__)
 
 
-def need_to_allocate_portfolio(conversation: str) -> bool:
-    """Determine if the user needs to allocate the portfolio right now."""
+@prompt(
+    DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
+    model=RetryChatModel(
+        OpenRouterChatModel(
+            model="deepseek/deepseek-chat-v3-0324",
+            temperature=0.0,
+            provider_sort="latency",
+            require_parameters=True,
+            provider_ignore=["GMICloud"],
+        ),
+        max_retries=5,
+    ),
+)
+async def _need_to_allocate_portfolio(conversation: str) -> bool: ...  # type: ignore[empty-body]
 
-    @prompt(
-        DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
-        model=OpenaiChatModel(model="gpt-4o-mini", temperature=0.0),
+
+@prompt(
+    PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
+    model=RetryChatModel(
+        OpenRouterChatModel(
+            model="deepseek/deepseek-chat-v3-0324",
+            temperature=0.0,
+            provider_sort="latency",
+            require_parameters=True,
+            provider_ignore=["GMICloud"],
+        ),
+        max_retries=5,
+    ),
+)
+async def _get_task_structure(conversation: str) -> TaskStructure: ...  # type: ignore[empty-body]
+
+
+def make_llm(chat_messages: list) -> Callable:
+    @chatprompt(
+        SystemMessage(SYSTEM_PROMPT),
+        *chat_messages,
+        model=OpenRouterChatModel(
+            model="deepseek/deepseek-chat-v3-0324",
+            temperature=0.7,
+            provider_sort="latency",
+            require_parameters=True,
+        ),
+        max_retries=5,
     )
-    def _need_to_allocate_portfolio(conversation: str) -> bool: ...
+    async def _llm() -> AsyncStreamedStr | str: ...  # type: ignore[empty-body]
 
-    # I'm using a while loop here for exception handling. This is to retry
-    # the prompt if the LLM returns something that is not a boolean.
-    attempt = 0
-    while attempt <= 5:
-        try:
-            need_to_allocate = _need_to_allocate_portfolio(conversation)
-            if isinstance(need_to_allocate, bool):
-                return need_to_allocate
-            else:
-                raise ValueError("Need to allocate portfolio is not a boolean")
-        except Exception as e:
-            attempt += 1
-            if attempt > 5:
-                logger.error(f"Error parsing user message: {e}")
-                raise e
+    return _llm
 
 
-def get_task_structure(messages: str) -> dict:
-    """Get the task structure from the user messages."""
-
-    @prompt(
-        PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
-        model=OpenaiChatModel(model="gpt-4o", temperature=0.0),
-    )
-    def parse_user_message(conversation: str) -> TaskStructure: ...
-
-    # I'm using a while loop here for exception handling. This is to retry the
-    # prompt if the LLM fails to return a an answer with the requires structure.
-    attempt = 0
-    while attempt <= 5:
-        try:
-            task_structure = parse_user_message(messages)
-            return task_structure
-        except Exception as e:
-            attempt += 1
-            if attempt > 5:
-                logger.error(f"Error parsing user message: {e}")
-                raise e
-
-
-async def execution_loop(request: AgentQueryRequest) -> AsyncGenerator[dict, None]:
+async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]:
     """Process the query and generate responses."""
 
-    chat_messages = []
+    chat_messages: list = []
+    citations_list: list = []
     for message in request.messages:
         if message.role == "ai":
-            chat_messages.append(
-                AssistantMessage(content=sanitize_message(message.content))
-            )
+            if hasattr(message, "content") and isinstance(message.content, str):
+                chat_messages.append(
+                    AssistantMessage(content=await sanitize_message(message.content))
+                )
         elif message.role == "human":
-            user_message_content = sanitize_message(message.content)
-            chat_messages.append(UserMessage(content=user_message_content))
-            if is_last_message(message, request.messages):
+            if hasattr(message, "content") and isinstance(message.content, str):
+                user_message_content = await sanitize_message(message.content)
+                chat_messages.append(UserMessage(content=user_message_content))
+            if await is_last_message(message, request.messages):
 
                 # I intentionally am not using function calling in this example
                 # because I want all the logic that is under the hood to be exposed
                 # explicitly so that others can use this code as a reference to learn
                 # what's going on under the hood and how server sent events
                 # are being yielded.
-                if need_to_allocate_portfolio(str(chat_messages)):
-                    yield StatusUpdateSSE(
-                        data=StatusUpdateSSEData(
-                            eventType="INFO",
-                            message="Starting asset basket allocation...\n"
-                            + "Fetching task structure...",
-                        ),
-                    ).model_dump()
+                if await _need_to_allocate_portfolio(str(chat_messages)):
+                    yield reasoning_step(
+                        message="Starting asset basket allocation...\n"
+                        + "Fetching task structure..."
+                    )
 
-                    task_structure = get_task_structure(str(chat_messages))
+                    task_structure = await _get_task_structure(str(chat_messages))
+                    yield reasoning_step(
+                        message="Task structure:",
+                        details=task_structure.__pretty_dict__(),
+                    )
 
-                    yield StatusUpdateSSE(
-                        data=StatusUpdateSSEData(
-                            eventType="INFO",
-                            message="Task structure:",
-                            details=[task_structure.__pretty_dict__()],
-                        ),
-                    ).model_dump()
-
-                    yield StatusUpdateSSE(
-                        data=StatusUpdateSSEData(
-                            eventType="INFO", message="Fetching historical prices..."
-                        ),
-                    ).model_dump()
+                    yield reasoning_step(
+                        message="Fetching historical prices...",
+                        details={"symbols": ", ".join(task_structure.asset_symbols)},
+                    )
 
                     task_dict = task_structure.model_dump()
                     task_dict.pop("task")
+
                     allocation = None
                     try:
-                        allocation = prepare_allocation(**task_dict)
+                        allocation = await prepare_allocation(**task_dict)
 
                     except Exception as e:
-                        yield StatusUpdateSSE(
-                            event="copilotStatusUpdate",
-                            data=StatusUpdateSSEData(
-                                eventType="ERROR",
-                                message=f"Error preparing allocation. {str(e)}",
-                            ),
-                        ).model_dump()
+                        yield reasoning_step(
+                            event_type="ERROR",
+                            message=f"Error preparing allocation. {str(e)}",
+                        )
                         chat_messages.append(
                             AssistantMessage(
                                 content=f"Error preparing allocation. {str(e)}"
@@ -150,40 +148,37 @@ async def execution_loop(request: AgentQueryRequest) -> AsyncGenerator[dict, Non
 
                     if allocation is not None:
                         try:
-                            yield StatusUpdateSSE(
-                                event="copilotStatusUpdate",
-                                data=StatusUpdateSSEData(
-                                    eventType="INFO",
-                                    message="Basket weights optimized. Saving allocation...",
-                                ),
-                            ).model_dump()
+                            yield reasoning_step(
+                                message="Basket weights optimized. Saving task and results...",
+                            )
 
-                            allocation_id = save_allocation(
-                                allocation_id=generate_id(length=2),
+                            allocation_id = await save_allocation(
+                                allocation_id=await generate_id(length=2),
                                 allocation_data=allocation.to_dict(orient="records"),
                             )
 
-                            yield StatusUpdateSSE(
-                                event="copilotStatusUpdate",
-                                data=StatusUpdateSSEData(
-                                    eventType="INFO",
-                                    message="Allocation saved successfully.",
-                                ),
-                            ).model_dump()
+                            task_to_save = task_structure.model_dump()
+                            task_to_save.pop("task")
+                            # Add current date as the first key of the task data
+                            task_to_save["date"] = date.today().isoformat()
+                            await save_task(
+                                allocation_id=allocation_id,
+                                task_data=task_to_save,
+                            )
 
-                            yield ArtifactSSE(
-                                data=ArtifactSSEData(
-                                    type="table",
-                                    name="Allocation",
-                                    description="Allocation of assets to the in the basket.",
-                                    uuid=uuid4(),
-                                    content=allocation.to_dict(orient="records"),
-                                ),
-                            ).model_dump()
+                            yield reasoning_step(
+                                message="Allocation saved successfully.",
+                            )
+
+                            yield table(
+                                data=allocation.to_dict(orient="records"),
+                                name=f"Allocation {allocation_id}",
+                                description="Allocation of assets to the in the basket.",
+                            )
 
                             chat_messages.append(
                                 AssistantMessage(
-                                    content=sanitize_message(
+                                    content=await sanitize_message(
                                         f"Allocation created. Allocation id: is `{allocation_id}`. Allocation data is {allocation.to_markdown()}."
                                     )
                                 )
@@ -194,29 +189,40 @@ async def execution_loop(request: AgentQueryRequest) -> AsyncGenerator[dict, Non
                                     + "At the end of your message include the allocation id formatted as an inline code block."
                                 )
                             )
+                            if allocation_id:
+                                citations_list = [
+                                    cite(
+                                        widget=Widget(
+                                            name="Asset allocation data",
+                                            widget_id="allocation-data",
+                                            description="Allocation data for the portfolio.",
+                                            origin="Allocator Bot Backend",
+                                            params=[
+                                                WidgetParam(
+                                                    name="allocation_id",
+                                                    type="text",
+                                                    description="Unique identifier for the allocation",
+                                                )
+                                            ],
+                                        ),
+                                        input_arguments={
+                                            "allocation_id": allocation_id
+                                        },
+                                        extra_details={"allocation_id": allocation_id},
+                                    )
+                                ]
                         except Exception as e:
-                            yield StatusUpdateSSE(
-                                event="copilotStatusUpdate",
-                                data=StatusUpdateSSEData(
-                                    eventType="ERROR",
-                                    message=f"Error saving allocation. {str(e)}",
-                                ),
-                            ).model_dump()
-
-    @chatprompt(
-        SystemMessage(SYSTEM_PROMPT),
-        *chat_messages,
-        model=OpenaiChatModel(model="gpt-4o", temperature=0.7),
-    )
-    async def _llm() -> AsyncStreamedStr | str: ...
-
+                            yield reasoning_step(
+                                event_type="ERROR",
+                                message=f"Error saving allocation. {str(e)}",
+                            )
+    _llm = make_llm(chat_messages)
     llm_result = await _llm()
 
     if isinstance(llm_result, str):
-        yield {
-            "event": "copilotMessageChunk",
-            "data": json.dumps({"delta": llm_result}),
-        }
+        yield message_chunk(text=llm_result)
     else:
         async for chunk in llm_result:
-            yield {"event": "copilotMessageChunk", "data": json.dumps({"delta": chunk})}
+            yield message_chunk(text=chunk)
+    if len(citations_list) > 0:
+        yield citations(citations_list)

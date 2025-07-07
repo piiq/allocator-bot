@@ -1,30 +1,33 @@
-import json
-import os
 import warnings
 from datetime import datetime, timedelta
 
 import pandas as pd
-from openbb import obb
-from pypfopt import EfficientFrontier, expected_returns, risk_models
+from openbb_fmp import FMPEquityHistoricalFetcher
+from pypfopt import EfficientFrontier, expected_returns, risk_models  # type: ignore
+
+from .config import config
 
 
-def fetch_historical_prices(
+async def fetch_historical_prices(
     tickers: list[str], start_date: str = "1998-01-01", end_date: str | None = None
 ) -> pd.DataFrame:
     """Fetch historical prices for a list of tickers."""
+
     if end_date is None:
         end_date = datetime.today().strftime("%Y-%m-%d")
 
-    price_data = obb.equity.price.historical(
-        symbol=",".join(tickers),
-        start_date=start_date,
-        end_date=end_date,
-        provider="fmp",
-    ).to_df()
-    return price_data
+    price_data = await FMPEquityHistoricalFetcher.fetch_data(
+        params={
+            "symbol": ",".join(tickers),
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+        credentials={"fmp_api_key": config.fmp_api_key or ""},
+    )
+    return pd.DataFrame(p.model_dump() for p in price_data)  # type: ignore [union-attr]
 
 
-def optimize_portfolio(
+async def optimize_portfolio(
     prices: pd.DataFrame,
     risk_free_rate: float,
     target_return: float,
@@ -59,7 +62,7 @@ def optimize_portfolio(
     return results
 
 
-def calculate_quantities(
+async def calculate_quantities(
     weights: dict[str, float], latest_prices: dict[str, float], total_investment: float
 ) -> dict[str, int]:
     """Calculate the quantities of shares to allocate based on weights and total investment."""
@@ -70,7 +73,7 @@ def calculate_quantities(
     return quantities
 
 
-def prepare_allocation(
+async def prepare_allocation(
     asset_symbols: list[str],
     total_investment: float,
     start_date: str | None = None,
@@ -89,7 +92,7 @@ def prepare_allocation(
     end_date = end_date or datetime.now().strftime("%Y-%m-%d")
 
     # Fetch historical prices
-    historical_prices = fetch_historical_prices(
+    historical_prices = await fetch_historical_prices(
         asset_symbols, start_date=start_date, end_date=end_date
     )
 
@@ -111,7 +114,7 @@ def prepare_allocation(
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         try:
-            optimized_weights = optimize_portfolio(prices, **optimization_kwargs)
+            optimized_weights = await optimize_portfolio(prices, **optimization_kwargs)
         except Exception as e:
             warning_messages = "\n".join(str(warning.message) for warning in w)
             raise ValueError(
@@ -124,7 +127,9 @@ def prepare_allocation(
     # Create a DataFrame to store results
     results = []
     for model, weights in optimized_weights.items():
-        quantities = calculate_quantities(weights, latest_prices, total_investment)
+        quantities = await calculate_quantities(
+            weights, latest_prices, total_investment
+        )
         for symbol, weight in weights.items():
             results.append(
                 {
@@ -136,19 +141,3 @@ def prepare_allocation(
             )
 
     return pd.DataFrame(results)
-
-
-def save_allocation(allocation_id: str, allocation_data: dict) -> None:
-    """Save the allocation to a json file."""
-    data_folder_path = os.getenv("DATA_FOLDER_PATH")
-    if not data_folder_path:
-        raise ValueError("DATA_FOLDER_PATH environment variable is not set")
-
-    with open(os.path.join(data_folder_path, "allocations.json"), "r") as f:
-        allocation_results_json = json.load(f)
-
-    allocation_results_json[allocation_id] = allocation_data
-
-    with open(os.path.join(data_folder_path, "allocations.json"), "w") as f:
-        json.dump(allocation_results_json, f, indent=4)
-    return allocation_id
