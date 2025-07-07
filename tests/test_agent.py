@@ -331,8 +331,7 @@ class TestExecutionLoop:
             citation_events = [
                 e
                 for e in events
-                if hasattr(e, "event")
-                and e.event == "copilotCitationCollection"
+                if hasattr(e, "event") and e.event == "copilotCitationCollection"
             ]
             assert len(citation_events) > 0
 

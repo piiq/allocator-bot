@@ -178,7 +178,7 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
 
                             chat_messages.append(
                                 AssistantMessage(
-                                    content=sanitize_message(
+                                    content=await sanitize_message(
                                         f"Allocation created. Allocation id: is `{allocation_id}`. Allocation data is {allocation.to_markdown()}."
                                     )
                                 )

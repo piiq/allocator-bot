@@ -15,7 +15,7 @@ async def async_client():
     """Provide an async HTTP client for testing FastAPI endpoints."""
     from allocator_bot.__main__ import get_app
     from httpx import ASGITransport
-    
+
     app = get_app()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

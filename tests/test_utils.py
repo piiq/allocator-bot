@@ -1,5 +1,3 @@
-import pytest
-from fastapi import HTTPException
 from openbb_ai.models import LlmClientMessage
 
 from allocator_bot.utils import (
@@ -36,9 +34,6 @@ class TestValidateApiKey:
         api_key = "test-key"
         token = ""
         assert validate_api_key(token, api_key) is False
-
-
-
 
 
 class TestSanitizeMessage:
