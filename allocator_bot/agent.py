@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from typing import AsyncGenerator, Callable
 
 from magentic import (
@@ -158,6 +159,8 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
 
                             task_to_save = task_structure.model_dump()
                             task_to_save.pop("task")
+                            # Add current date as the first key of the task data
+                            task_to_save["date"] = date.today().isoformat()
                             await save_task(
                                 allocation_id=allocation_id,
                                 task_data=task_to_save,

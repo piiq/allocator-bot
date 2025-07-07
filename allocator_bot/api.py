@@ -1,5 +1,6 @@
 import logging
 
+import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,7 +10,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from .agent import execution_loop
 from .config import config
-from .storage import load_allocations
+from .storage import load_allocations, load_tasks
 from .utils import validate_api_key
 
 app = FastAPI()
@@ -184,6 +185,168 @@ async def get_allocation_data(
         ]
 
     return JSONResponse(content={"allocation": selected_allocation})
+
+
+@app.get(
+    "/task_data",
+    openapi_extra={
+        "widget_config": {
+            "name": "Allocation Task History",
+            "description": "Asset basket allocation task history",
+            "endpoint": "/task_data",
+            "category": "Allocations",
+            "sub_category": "Allocation",
+            "source": ["Allocator bot"],
+            "gridData": {
+                "x": 0,
+                "y": 0,
+                "w": 40,
+                "h": 15,
+                "minH": 10,
+                "minW": 20,
+                "maxH": 100,
+                "maxW": 100,
+            },
+            "widgetId": "task-data",
+            "type": "table",
+            "params": [
+                {
+                    "paramName": "start_date",
+                    "label": "Start Date",
+                    "type": "date",
+                    "description": "Filter tasks from this date (YYYY-MM-DD)",
+                },
+                {
+                    "paramName": "end_date",
+                    "label": "End Date",
+                    "type": "date",
+                    "description": "Filter tasks until this date (YYYY-MM-DD)",
+                },
+                {
+                    "paramName": "symbol_search",
+                    "label": "Symbol Search",
+                    "type": "text",
+                    "description": "Filter by asset symbol (partial match)",
+                },
+            ],
+            "data": {
+                "dataKey": "tasks",
+                "table": {
+                    "enableCharts": False,
+                    "showAll": True,
+                    "transpose": False,
+                    "columnDefs": [
+                        {
+                            "field": "Task ID",
+                            "headerName": "Task ID",
+                            "cellDataType": "text",
+                            "formatterFn": "none",
+                            "width": 100,
+                            "pinned": "left",
+                        },
+                        {
+                            "field": "Timestamp",
+                            "headerName": "Task Date",
+                            "cellDataType": "text",
+                            "formatterFn": "date",
+                            "width": 100,
+                        },
+                        {
+                            "field": "Assets",
+                            "headerName": "Assets",
+                            "cellDataType": "text",
+                            "formatterFn": "none",
+                            "width": 150,
+                        },
+                        {
+                            "field": "Investment",
+                            "headerName": "Investment (USD)",
+                            "cellDataType": "number",
+                            "formatterFn": "currency",
+                            "width": 100,
+                        },
+                        {
+                            "field": "Start Date",
+                            "headerName": "Start Date",
+                            "cellDataType": "text",
+                            "formatterFn": "dateTime",
+                            "width": 100,
+                        },
+                        {
+                            "field": "End Date",
+                            "headerName": "End Date",
+                            "cellDataType": "text",
+                            "formatterFn": "dateTime",
+                            "width": 100,
+                        },
+                        {
+                            "field": "Risk Free Rate",
+                            "headerName": "% Risk Free Rate",
+                            "cellDataType": "number",
+                            "formatterFn": "% number (1 decimal)",
+                            "width": 120,
+                        },
+                        {
+                            "field": "Target Return",
+                            "headerName": "% Target Return",
+                            "cellDataType": "number",
+                            "formatterFn": "% number (1 decimal)",
+                            "width": 120,
+                        },
+                        {
+                            "field": "Target Volatility",
+                            "headerName": "% Target Volatility",
+                            "cellDataType": "number",
+                            "formatterFn": "normalizedPercent",
+                            "width": 120,
+                        },
+                    ],
+                },
+            },
+        }
+    },
+)
+async def get_task_data(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    symbol_search: str | None = None,
+    token: str = Depends(get_current_user),
+) -> JSONResponse:
+    """Fetch task data with filtering by date range and symbol search."""
+    tasks = await load_tasks()
+
+    if not tasks:
+        return JSONResponse(content={"tasks": []})
+
+    df = pd.DataFrame(
+        [
+            {
+                "Task ID": task_id,
+                "Timestamp": task_data.get("timestamp", ""),
+                "Assets": ", ".join(task_data.get("asset_symbols", [])),
+                "Investment": f"${task_data.get('total_investment', 0):,.2f}",
+                "Start Date": task_data.get("start_date", "N/A"),
+                "End Date": task_data.get("end_date", "N/A"),
+                "Risk Free Rate": f"{task_data.get('risk_free_rate', 0)*100:.1f}%",
+                "Target Return": f"{task_data.get('target_return', 0)*100:.1f}%",
+                "Target Volatility": f"{task_data.get('target_volatility', 0)*100:.1f}%",
+            }
+            for task_id, task_data in tasks.items()
+        ]
+    )
+
+    # Apply filters
+    if start_date:
+        df = df[df["Timestamp"].str[:10] >= start_date]
+    if end_date:
+        df = df[df["Timestamp"].str[:10] <= end_date]
+    if symbol_search:
+        df = df[df["Assets"].str.upper().str.contains(symbol_search.upper(), na=False)]
+
+    # Sort by timestamp (newest first)
+    df = df.sort_values("Timestamp", ascending=False)
+
+    return JSONResponse(content={"tasks": df.to_dict(orient="records")})
 
 
 @app.post("/v1/query")
