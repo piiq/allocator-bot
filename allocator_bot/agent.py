@@ -169,7 +169,7 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
 
                             yield table(
                                 data=allocation.to_dict(orient="records"),
-                                name="Allocation",
+                                name=f"Allocation {allocation_id}",
                                 description="Allocation of assets to the in the basket.",
                             )
 
