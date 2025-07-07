@@ -262,9 +262,9 @@ async def test_get_task_data_basic(async_client):
         assert "Timestamp" in task
         assert "Assets" in task
         assert "Investment" in task
-        assert task["Investment"] == "$100,000.00"
+        assert task["Investment"] == 100000
         assert task["Assets"] == "AAPL, GOOGL"
-        assert task["Risk Free Rate"] == "5.0%"
+        assert task["Risk Free Rate"] == 0.05
 
 
 @pytest.mark.asyncio

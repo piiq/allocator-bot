@@ -214,7 +214,6 @@ async def get_allocation_data(
     if not allocation_id:
         return JSONResponse(content={"error": "Allocation ID is required"})
 
-    allocations = {}
     allocations = await load_allocations()
 
     selected_allocation = allocations.get(
