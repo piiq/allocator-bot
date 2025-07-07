@@ -34,19 +34,19 @@ openbb-api --app allocator_bot.__main__:get_app --factory
 Run tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
 Code formatting
 
 ```bash
-black .
+uv run black .
 ```
 
 Linting
 
 ```bash
-ruff check .
+uv run ruff check .
 ```
 
 ### Dependency Management
@@ -126,7 +126,7 @@ User Request → FastAPI Endpoint (/v1/query) → Agent Execution Loop → Portf
 ### Docker
 
 - Multi-stage Dockerfile using UV for optimized builds
-- Runs on port 6900
+- Runs on port 4299
 - Non-root user for security
 
 ### Kubernetes
