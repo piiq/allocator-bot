@@ -1,6 +1,6 @@
 [project]
 name = "allocator-bot"
-version = "0.1.0"
+version = "0.2.0"
 description = "An asset allocation bot for OpenBB that uses PyPortfolioOpt to generate efficient frontier allocations."
 authors = [{ name = "Theodore Aptekarev", email = "aptekarev@gmail.com" }]
 readme = "README.md"
