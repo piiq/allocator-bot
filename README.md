@@ -9,7 +9,7 @@ A portfolio optimization copilot for OpenBB that uses PyPortfolioOpt to generate
 ## Features
 
 <p align="center">
-   <img width="1482" alt="image" src="https://github.com/user-attachments/assets/58cf19e9-4aa5-45fa-8b8b-8ed2fb911ffa" />
+   <img width="1482" alt="image" src="https://github.com/user-attachments/assets/b380c409-6569-47a1-ba73-cfd00d890e6f" />
 </p>
 
 
