@@ -12,17 +12,25 @@ from allocator_bot.storage import save_allocation
 
 
 async def test_fetch_historical_prices():
-    mock_df = pd.DataFrame(
-        {
-            "symbol": ["AAPL", "GOOG"],
-            "date": ["2023-01-01", "2023-01-01"],
-            "adj_close": [150.0, 2800.0],
-        }
-    )
-    mock_obb = MagicMock()
-    mock_obb.equity.price.historical.return_value.to_df.return_value = mock_df
+    # Mock data that FMPEquityHistoricalFetcher would return
+    mock_price_obj_1 = MagicMock()
+    mock_price_obj_1.model_dump.return_value = {
+        "symbol": "AAPL",
+        "date": "2023-01-01",
+        "adj_close": 150.0,
+    }
+    mock_price_obj_2 = MagicMock()
+    mock_price_obj_2.model_dump.return_value = {
+        "symbol": "GOOG",
+        "date": "2023-01-01",
+        "adj_close": 2800.0,
+    }
+    mock_price_data = [mock_price_obj_1, mock_price_obj_2]
 
-    with patch("allocator_bot.portfolio.obb", mock_obb):
+    with patch(
+        "allocator_bot.portfolio.FMPEquityHistoricalFetcher.fetch_data",
+        return_value=mock_price_data,
+    ):
         prices = await fetch_historical_prices(["AAPL", "GOOG"])
         assert not prices.empty
         assert list(prices.columns) == ["symbol", "date", "adj_close"]

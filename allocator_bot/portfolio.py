@@ -2,7 +2,7 @@ import warnings
 from datetime import datetime, timedelta
 
 import pandas as pd
-from openbb import obb  # type: ignore
+from openbb_fmp import FMPEquityHistoricalFetcher
 from pypfopt import EfficientFrontier, expected_returns, risk_models  # type: ignore
 
 from .config import config
@@ -12,19 +12,19 @@ async def fetch_historical_prices(
     tickers: list[str], start_date: str = "1998-01-01", end_date: str | None = None
 ) -> pd.DataFrame:
     """Fetch historical prices for a list of tickers."""
-    if obb.user.credentials.fmp_api_key is None:
-        obb.user.credentials.fmp_api_key = config.fmp_api_key
 
     if end_date is None:
         end_date = datetime.today().strftime("%Y-%m-%d")
 
-    price_data = obb.equity.price.historical(  # type: ignore
-        symbol=",".join(tickers),
-        start_date=start_date,
-        end_date=end_date,
-        provider="fmp",
-    ).to_df()
-    return price_data
+    price_data = await FMPEquityHistoricalFetcher.fetch_data(
+        params={
+            "symbol": ",".join(tickers),
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+        credentials={"fmp_api_key": config.fmp_api_key or ""},
+    )
+    return pd.DataFrame(p.model_dump() for p in price_data)  # type: ignore [union-attr]
 
 
 async def optimize_portfolio(

@@ -105,9 +105,6 @@ dependencies = [
     { name = "boto3" },
     { name = "magentic" },
     { name = "openbb-ai" },
-    { name = "openbb-core" },
-    { name = "openbb-equity" },
-    { name = "openbb-etf" },
     { name = "openbb-fmp" },
     { name = "openbb-platform-api" },
     { name = "pandas" },
@@ -140,9 +137,6 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.34.0" },
     { name = "magentic", specifier = ">=0.40.0" },
     { name = "openbb-ai", specifier = ">=1.5.0" },
-    { name = "openbb-core", specifier = ">=1.3.7" },
-    { name = "openbb-equity", specifier = ">=1.3.5" },
-    { name = "openbb-etf", specifier = ">=1.3.5" },
     { name = "openbb-fmp", specifier = ">=1.3.5" },
     { name = "openbb-platform-api", specifier = ">=1.1.10" },
     { name = "pandas", specifier = ">=2.2.3" },
@@ -1085,30 +1079,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/67/c0/edd51118e48db134ff44dd4b93428a5d7bbf642d1079f5f595a4d74c7d65/openbb_core-1.4.7.tar.gz", hash = "sha256:0c035cb2fdf7477d2d418ab08ca308d22696a45a9e5d571fd0c2b3797e0176ba", size = 156237, upload-time = "2025-05-05T15:18:57.182Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/33/2e03ed56ee6d0600250e6d0ec6769e895e69d2916ff0f5a3f37a070b88e4/openbb_core-1.4.7-py3-none-any.whl", hash = "sha256:f46b3a1d354f02df1fb802bcbb6b1a0253b576607aeb7ecb9e47561e113b3dd4", size = 293602, upload-time = "2025-05-05T15:18:54.706Z" },
-]
-
-[[package]]
-name = "openbb-equity"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "openbb-core" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/19/20/aed1835677b7ed1a2186e555001b5e8dcce924cd4c9f849bce92ebb5eccf/openbb_equity-1.4.1.tar.gz", hash = "sha256:56e47b4f5525e4f4a44761f1907c17a60fea40a18739acaadf766fe051a58762", size = 8340, upload-time = "2025-05-01T18:21:50.15Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/be/7debe71265b36716bf535c3509d2ef9187340579edc02d024219dd4c6c66/openbb_equity-1.4.1-py3-none-any.whl", hash = "sha256:962e71ddff9c9a793b266a24c407adba42deb539df8794275b2f3573848e1021", size = 16383, upload-time = "2025-05-01T18:21:48.733Z" },
-]
-
-[[package]]
-name = "openbb-etf"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "openbb-core" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/d2/42baf9b154b1f4cf0b68789ffc612ee888863b586e3f1511b895719b4ee5/openbb_etf-1.4.1.tar.gz", hash = "sha256:72f5f0a1a0c386e0d109c8cc1716d764e6d50f96626e9d889504f2db8108fc2d", size = 3120, upload-time = "2025-05-01T18:21:56.089Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/00/81145b93af706a96db16bb700523736693082b4be63ec111391dcb241b1e/openbb_etf-1.4.1-py3-none-any.whl", hash = "sha256:9d3647d726ad143062462ccaa62d438a4863d047cdd524fef1bae65976719de5", size = 5146, upload-time = "2025-05-01T18:21:54.581Z" },
 ]
 
 [[package]]
