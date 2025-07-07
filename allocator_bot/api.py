@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from openbb_ai.models import QueryRequest  # type: ignore[import-untyped]
 from sse_starlette.sse import EventSourceResponse
@@ -56,6 +56,15 @@ async def read_root():
     return {"info": "Asset basket allocator"}
 
 
+@app.get("/assets/image.png", openapi_extra={"widget_config": {"exclude": True}})
+async def get_image():
+    """Serve the image file."""
+    image_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "assets", "image.png")
+    )
+    return FileResponse(image_path, media_type="image/png")
+
+
 @app.get("/agents.json", openapi_extra={"widget_config": {"exclude": True}})
 async def get_agent_description():
     """Agents configuration file for the OpenBB Workspace"""
@@ -64,7 +73,7 @@ async def get_agent_description():
             "allocator_bot": {
                 "name": "Allocator Bot",
                 "description": "AI-powered allocator bot to answer questions about the asset basket allocation.",
-                "image": "https://github.com/OpenBB-finance/copilot-for-terminal-pro/assets/14093308/7da2a512-93b9-478d-90bc-b8c3dd0cabcf",
+                "image": f"{config.agent_host_url}/assets/image.png",
                 "endpoints": {"query": f"{config.agent_host_url}/v1/query"},
                 "features": {
                     "streaming": True,
@@ -83,6 +92,10 @@ async def get_apps_description():
         os.path.abspath(os.path.join(os.path.dirname(__file__), "apps.json")), "r"
     ) as f:
         apps_config = json.load(f)
+
+    for config_key in ["img", "img_dark", "img_light"]:
+        apps_config[config_key] = f"{config.agent_host_url}/assets/image.png"
+
     return JSONResponse(content=apps_config)
 
 

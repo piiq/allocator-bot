@@ -23,17 +23,23 @@
             },
             "columnState": {
               "default": {
+                "columnPinning": {
+                  "leftColIds": [
+                    "Task ID"
+                  ],
+                  "rightColIds": []
+                },
                 "columnOrder": {
                   "orderedColIds": [
                     "Task ID",
                     "Timestamp",
                     "Assets",
                     "Investment",
-                    "Start Date",
-                    "End Date",
                     "Risk Free Rate",
                     "Target Return",
-                    "Target Volatility"
+                    "Target Volatility",
+                    "Start Date",
+                    "End Date"
                   ]
                 }
               }
