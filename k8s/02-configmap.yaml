@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: allocator-bot-config
+data:
+  # Host URL where the app will be accessible
+  AGENT_HOST_URL: "http://allocator-bot-service"
+  
+  # Data folder path for storing allocation data
+  DATA_FOLDER_PATH: "data"
+  
+  # S3 configuration (non-sensitive)
+  S3_ENABLED: "false"
+  S3_ENDPOINT: ""
+  S3_BUCKET_NAME: ""
+  ALLOCATION_DATA_FILE: "allocations.json"
+  TASK_DATA_FILE: "tasks.json"

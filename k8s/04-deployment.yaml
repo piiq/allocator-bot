@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: allocator-bot
+  labels:
+    app: allocator-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: allocator-bot
+  template:
+    metadata:
+      labels:
+        app: allocator-bot
+    spec:
+      containers:
+      - name: allocator-bot
+        image: ghcr.io/p2p/allocator-bot:latest
+        ports:
+        - containerPort: 4299
+          name: http
+        env:
+        - name: AGENT_HOST_URL
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: AGENT_HOST_URL
+        - name: APP_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: allocator-bot-secrets
+              key: APP_API_KEY
+        - name: DATA_FOLDER_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: DATA_FOLDER_PATH
+        - name: S3_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: S3_ENABLED
+        - name: S3_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: S3_ENDPOINT
+        - name: S3_BUCKET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: S3_BUCKET_NAME
+        - name: ALLOCATION_DATA_FILE
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: ALLOCATION_DATA_FILE
+        - name: TASK_DATA_FILE
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: TASK_DATA_FILE
+        - name: OPENROUTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: allocator-bot-secrets
+              key: OPENROUTER_API_KEY
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: allocator-bot-secrets
+              key: S3_ACCESS_KEY
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: allocator-bot-secrets
+              key: S3_SECRET_KEY
+        - name: FMP_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: allocator-bot-secrets
+              key: FMP_API_KEY
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 4299
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4299
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: data-volume
+        emptyDir: {}

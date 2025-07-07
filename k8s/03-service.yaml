@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: allocator-bot-service
+  labels:
+    app: allocator-bot
+spec:
+  selector:
+    app: allocator-bot
+  ports:
+  - name: http
+    port: 80
+    targetPort: 4299
+    protocol: TCP
+  type: ClusterIP
