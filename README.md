@@ -45,7 +45,7 @@ The easiest way to run the Allocator Bot is using Docker:
 
 ```bash
 docker run --rm -it --name allocator-bot \
-  -e HOST_URL=http://localhost:4322 \
+  -e AGENT_HOST_URL=http://localhost:4322 \
   -e APP_API_KEY=your_api_key \
   -e OPENROUTER_API_KEY=your_openrouter_key \
   -e FMP_API_KEY=your_fmp_key \
@@ -57,7 +57,7 @@ docker run --rm -it --name allocator-bot \
 
 **Required Environment Variables:**
 
-- `HOST_URL`: The host URL where the app is running (e.g., `http://localhost:4322`)
+- `AGENT_HOST_URL`: The host URL where the app is running (e.g., `http://localhost:4322`)
 - `APP_API_KEY`: Your API key to access the bot
 - `OPENROUTER_API_KEY`: Your OpenRouter API key for LLM access
 - `FMP_API_KEY`: Your Financial Modeling Prep API key for market data
