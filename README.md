@@ -62,11 +62,14 @@ docker run --rm -it --name allocator-bot \
 - `OPENROUTER_API_KEY`: Your OpenRouter API key for LLM access
 - `FMP_API_KEY`: Your Financial Modeling Prep API key for market data
 
-**Optional Environment Variables:**
+**Storage Configuration (choose one):**
 
-- `DATA_FOLDER_PATH`: Local storage path (default: `data`)
-- `S3_ENABLED`: Enable S3 storage (default: `false`)
-- `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_NAME`: S3 configuration (if enabled)
+When S3 is disabled (default), local storage is required:
+- `DATA_FOLDER_PATH`: Local storage path for allocation data (required when `S3_ENABLED=false`)
+
+When S3 is enabled:
+- `S3_ENABLED`: Set to `true` to enable S3 storage
+- `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_NAME`: S3 configuration (all required when S3 enabled)
 
 ### Alternative Installation Methods
 
