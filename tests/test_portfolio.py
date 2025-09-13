@@ -44,11 +44,49 @@ async def test_optimize_portfolio():
         "GOOG": [2800, 2810, 2805],
     }
     prices = pd.DataFrame(data).set_index("date")
-    results = await optimize_portfolio(prices, 0.02, 0.1, 0.2)
+    results, failures = await optimize_portfolio(prices, 0.02, 0.1, 0.2)
     assert "max_sharpe" in results
     assert "min_volatility" in results
     assert "efficient_risk" in results
     assert "efficient_return" in results
+
+
+async def test_optimize_portfolio_resilience():
+    """Test that optimize_portfolio handles infeasible constraints gracefully."""
+    data = {
+        "date": pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]),
+        "AAPL": [150, 152, 151],
+        "GOOG": [2800, 2810, 2805],
+    }
+    prices = pd.DataFrame(data).set_index("date")
+
+    # Test with infeasible constraints
+    results, failures = await optimize_portfolio(
+        prices, 0.02, 5.0, 5.0
+    )  # Very high target return and volatility
+
+    # Should still return results dict
+    assert isinstance(results, dict)
+    assert "max_sharpe" in results
+    assert "min_volatility" in results
+
+    # Some models may fail and return strings, others may succeed or auto-adjust
+    successful_models = [k for k, v in results.items() if isinstance(v, dict)]
+    string_results = [k for k, v in results.items() if isinstance(v, str)]
+
+    # At least some models should succeed
+    assert (
+        len(successful_models) >= 2
+    )  # max_sharpe and min_volatility should always work
+
+    # String results should be either failure messages or adjustment notes
+    for model in string_results:
+        result = results[model]
+        assert (
+            result.startswith("Failed")
+            or "adjusted" in result
+            or "Cannot validate" in result
+        )
 
 
 async def test_calculate_quantities():
@@ -95,6 +133,7 @@ async def test_prepare_allocation(mock_fetch_historical_prices):
     assert "Ticker" in allocation.columns
     assert "Weight" in allocation.columns
     assert "Quantity" in allocation.columns
+    assert "Note" in allocation.columns
 
 
 @patch("allocator_bot.storage.get_storage")
