@@ -167,8 +167,6 @@ async def prepare_allocation(
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         try:
-            optimized_weights: dict[str, dict[str, float]]
-            failures: dict[str, str]
             optimized_weights, failures = await optimize_portfolio(
                 prices, **optimization_kwargs
             )
