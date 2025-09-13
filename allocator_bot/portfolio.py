@@ -32,34 +32,83 @@ async def optimize_portfolio(
     risk_free_rate: float,
     target_return: float,
     target_volatility: float,
-) -> dict[str, dict[str, float]]:
-    """Perform portfolio optimization for multiple risk models and return the results."""
+) -> tuple[dict[str, dict[str, float]], dict[str, str]]:
+    """Perform portfolio optimization with resilience against infeasible constraints."""
     mu = expected_returns.mean_historical_return(prices)
     S = risk_models.sample_cov(prices)
 
     results = {}
+    failures = {}
 
-    # Maximize Sharpe Ratio
-    ef_sharpe = EfficientFrontier(mu, S)
-    ef_sharpe.max_sharpe(risk_free_rate=risk_free_rate)
-    results["max_sharpe"] = ef_sharpe.clean_weights()
+    # Always run unconstrained models
+    try:
+        ef_sharpe = EfficientFrontier(mu, S)
+        ef_sharpe.max_sharpe(risk_free_rate=risk_free_rate)
+        results["max_sharpe"] = ef_sharpe.clean_weights()
+    except Exception as e:
+        failures["max_sharpe"] = f"Failed: {str(e)}"
 
-    # Minimize Volatility
-    ef_volatility = EfficientFrontier(mu, S)
-    ef_volatility.min_volatility()
-    results["min_volatility"] = ef_volatility.clean_weights()
+    try:
+        ef_volatility = EfficientFrontier(mu, S)
+        ef_volatility.min_volatility()
+        min_vol_weights = ef_volatility.clean_weights()
+        results["min_volatility"] = min_vol_weights
+        # Calculate minimum possible volatility for validation
+        min_volatility = ef_volatility.portfolio_performance()[1]
+    except Exception as e:
+        failures["min_volatility"] = f"Failed: {str(e)}"
+        min_volatility = None
 
-    # Efficient Risk
-    ef_risk = EfficientFrontier(mu, S)
-    ef_risk.efficient_risk(target_volatility=target_volatility)
-    results["efficient_risk"] = ef_risk.clean_weights()
+    # Efficient Risk with validation
+    if min_volatility is not None:
+        if target_volatility <= min_volatility:
+            # Auto-adjust to feasible value
+            adjusted_volatility = min_volatility * 1.01  # 1% buffer
+            try:
+                ef_risk = EfficientFrontier(mu, S)
+                ef_risk.efficient_risk(target_volatility=adjusted_volatility)
+                results["efficient_risk"] = ef_risk.clean_weights()
+                failures["efficient_risk_note"] = (
+                    f"Target volatility adjusted from {target_volatility:.3f} to {adjusted_volatility:.3f} (minimum possible)"
+                )
+            except Exception as e:
+                failures["efficient_risk"] = f"Failed even with adjustment: {str(e)}"
+        else:
+            try:
+                ef_risk = EfficientFrontier(mu, S)
+                ef_risk.efficient_risk(target_volatility=target_volatility)
+                results["efficient_risk"] = ef_risk.clean_weights()
+            except Exception as e:
+                failures["efficient_risk"] = f"Failed: {str(e)}"
+    else:
+        failures["efficient_risk"] = (
+            "Cannot validate - min volatility calculation failed"
+        )
 
-    # Efficient Return
-    ef_return = EfficientFrontier(mu, S)
-    ef_return.efficient_return(target_return=target_return)
-    results["efficient_return"] = ef_return.clean_weights()
+    # Efficient Return with validation
+    # Calculate maximum possible return (simplified: max individual asset return)
+    max_individual_return = mu.max()
+    if target_return >= max_individual_return:
+        # Auto-adjust to feasible value
+        adjusted_return = max_individual_return * 0.99  # 1% buffer
+        try:
+            ef_return = EfficientFrontier(mu, S)
+            ef_return.efficient_return(target_return=adjusted_return)
+            results["efficient_return"] = ef_return.clean_weights()
+            failures["efficient_return_note"] = (
+                f"Target return adjusted from {target_return:.3f} to {adjusted_return:.3f} (maximum possible)"
+            )
+        except Exception as e:
+            failures["efficient_return"] = f"Failed even with adjustment: {str(e)}"
+    else:
+        try:
+            ef_return = EfficientFrontier(mu, S)
+            ef_return.efficient_return(target_return=target_return)
+            results["efficient_return"] = ef_return.clean_weights()
+        except Exception as e:
+            failures["efficient_return"] = f"Failed: {str(e)}"
 
-    return results
+    return results, failures
 
 
 async def calculate_quantities(
@@ -84,6 +133,7 @@ async def prepare_allocation(
 ) -> pd.DataFrame:
     """
     Main function to fetch data, optimize portfolio, and return a DataFrame with weights and quantities.
+    Failed models are included as rows with Note column.
     """
     # Define time range for optimization
     start_date = start_date or (datetime.now() - timedelta(days=365)).strftime(
@@ -101,6 +151,9 @@ async def prepare_allocation(
         values="adj_close", index="date", columns="symbol"
     )
 
+    # Ensure all price data is numeric
+    prices = prices.astype(float)
+
     # Perform portfolio optimization
     optimization_kwargs = {}
     if risk_free_rate is not None:
@@ -114,7 +167,11 @@ async def prepare_allocation(
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         try:
-            optimized_weights = await optimize_portfolio(prices, **optimization_kwargs)
+            optimized_weights: dict[str, dict[str, float]]
+            failures: dict[str, str]
+            optimized_weights, failures = await optimize_portfolio(
+                prices, **optimization_kwargs
+            )
         except Exception as e:
             warning_messages = "\n".join(str(warning.message) for warning in w)
             raise ValueError(
@@ -137,7 +194,20 @@ async def prepare_allocation(
                     "Ticker": symbol,
                     "Weight": weight,
                     "Quantity": quantities[symbol],
+                    "Note": None,
                 }
             )
+
+    # Add failure rows
+    for model, message in failures.items():
+        results.append(
+            {
+                "Risk Model": model,
+                "Ticker": "N/A",
+                "Weight": 0.0,
+                "Quantity": 0,
+                "Note": message,
+            }
+        )
 
     return pd.DataFrame(results)

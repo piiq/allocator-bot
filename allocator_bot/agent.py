@@ -141,23 +141,48 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                         )
                         chat_messages.append(UserMessage(content="What should I do?"))
 
-                    if allocation is not None:
+                    if allocation is not None and not allocation.empty:
                         try:
-                            yield reasoning_step(
-                                message="Basket weights optimized. Saving task and results...",
-                            )
+                            # Filter successful allocations for saving
+                            successful_allocation = allocation[
+                                allocation["Note"].isna()
+                            ]
+                            failure_rows = allocation[allocation["Note"].notna()]
 
-                            allocation_id = await save_allocation(
-                                allocation_id=await generate_id(length=2),
-                                allocation_data=allocation.to_dict(orient="records"),
-                            )
+                            if not successful_allocation.empty:
+                                yield reasoning_step(
+                                    message="Basket weights optimized. Saving task and results...",
+                                )
+
+                                allocation_id = await save_allocation(
+                                    allocation_id=await generate_id(length=2),
+                                    allocation_data=successful_allocation.to_dict(
+                                        orient="records"
+                                    ),
+                                )
+                            else:
+                                yield reasoning_step(
+                                    message="All optimization models failed. No allocations to save.",
+                                )
+                                allocation_id = None
+
+                            if not failure_rows.empty:
+                                yield reasoning_step(
+                                    message="Some optimization models failed or were adjusted:",
+                                    details={
+                                        row["Risk Model"]: row["Note"]
+                                        for _, row in failure_rows.iterrows()
+                                    },
+                                )
 
                             task_to_save = task_structure.model_dump()
                             task_to_save.pop("task")
                             # Add current date as the first key of the task data
                             task_to_save["date"] = date.today().isoformat()
                             await save_task(
-                                allocation_id=allocation_id,
+                                allocation_id=(
+                                    allocation_id if allocation_id else "ERROR"
+                                ),
                                 task_data=task_to_save,
                             )
 

@@ -82,12 +82,14 @@ class TestExecutionLoop:
                     "Ticker": "AAPL",
                     "Weight": 0.6,
                     "Quantity": 10,
+                    "Note": None,
                 },
                 {
                     "Risk Model": "max_sharpe",
                     "Ticker": "GOOGL",
                     "Weight": 0.4,
                     "Quantity": 5,
+                    "Note": None,
                 },
             ]
         )
@@ -177,6 +179,7 @@ class TestExecutionLoop:
                     "Ticker": "AAPL",
                     "Weight": 1.0,
                     "Quantity": 100,
+                    "Note": None,
                 },
             ]
         )
@@ -297,12 +300,14 @@ class TestExecutionLoop:
                     "Ticker": "AAPL",
                     "Weight": 0.7,
                     "Quantity": 20,
+                    "Note": None,
                 },
                 {
                     "Risk Model": "max_sharpe",
                     "Ticker": "MSFT",
                     "Weight": 0.3,
                     "Quantity": 15,
+                    "Note": None,
                 },
             ]
         )
