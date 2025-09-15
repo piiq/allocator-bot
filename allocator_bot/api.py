@@ -1,8 +1,9 @@
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
 
-import pandas as pd
+import pandas as pd  # type: ignore
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -14,8 +15,18 @@ from .agent import execution_loop
 from .config import config
 from .storage import load_allocations, load_tasks
 from .utils import validate_api_key
+from .validation import validate_environment
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """App lifespan: run startup validations before serving."""
+    await validate_environment(config)
+    logging.info("Startup complete")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -48,7 +59,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logging.info("Startup complete")
+logging.info("API module loaded")
 
 
 @app.get("/", openapi_extra={"widget_config": {"exclude": True}})
