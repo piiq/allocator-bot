@@ -75,7 +75,7 @@ class TestIsLastMessage:
             LlmClientMessage(role="human", content="Last message"),  # type: ignore
         ]
         target_message = messages[2]  # Last human message
-        assert await is_last_message(target_message, messages) is True
+        assert await is_last_message(target_message, messages) is True  # type: ignore
 
     async def test_is_last_message_false(self):
         """Test when message is not the last human message."""
@@ -85,7 +85,7 @@ class TestIsLastMessage:
             LlmClientMessage(role="human", content="Last message"),  # type: ignore
         ]
         target_message = messages[0]  # First human message
-        assert await is_last_message(target_message, messages) is False
+        assert await is_last_message(target_message, messages) is False  # type: ignore
 
     async def test_is_last_message_no_human_messages(self):
         """Test when there are no human messages."""
@@ -94,7 +94,7 @@ class TestIsLastMessage:
             LlmClientMessage(role="ai", content="Response 2"),  # type: ignore
         ]
         target_message = LlmClientMessage(role="human", content="Test message")  # type: ignore
-        assert await is_last_message(target_message, messages) is False
+        assert await is_last_message(target_message, messages) is False  # type: ignore
 
     async def test_is_last_message_only_human_messages(self):
         """Test when all messages are human messages."""
@@ -104,7 +104,7 @@ class TestIsLastMessage:
             LlmClientMessage(role="human", content="Last message"),  # type: ignore
         ]
         target_message = messages[2]  # Last message
-        assert await is_last_message(target_message, messages) is True
+        assert await is_last_message(target_message, messages) is True  # type: ignore
 
     async def test_is_last_message_single_human_message(self):
         """Test with single human message."""
@@ -112,7 +112,7 @@ class TestIsLastMessage:
             LlmClientMessage(role="human", content="Only message"),  # type: ignore
         ]
         target_message = messages[0]
-        assert await is_last_message(target_message, messages) is True
+        assert await is_last_message(target_message, messages) is True  # type: ignore
 
 
 class TestGenerateId:

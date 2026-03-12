@@ -20,8 +20,8 @@ class TestExecutionLoop:
         request = QueryRequest(
             messages=[
                 LlmClientMessage(
-                    role="human",
-                    content="What is portfolio optimization?",  # type: ignore
+                    role="human",  # type: ignore
+                    content="What is portfolio optimization?",
                 )
             ]
         )
@@ -64,8 +64,8 @@ class TestExecutionLoop:
                 LlmClientMessage(role="human", content="Hello"),  # type: ignore
                 LlmClientMessage(role="ai", content="Hi there!"),  # type: ignore
                 LlmClientMessage(
-                    role="human",
-                    content="Create a portfolio with AAPL and GOOGL",  # type: ignore
+                    role="human",  # type: ignore
+                    content="Create a portfolio with AAPL and GOOGL",
                 ),
             ]
         )
@@ -125,8 +125,8 @@ class TestExecutionLoop:
         request = QueryRequest(
             messages=[
                 LlmClientMessage(
-                    role="human",
-                    content="Create a portfolio with invalid symbols",  # type: ignore
+                    role="human",  # type: ignore
+                    content="Create a portfolio with invalid symbols",
                 ),
             ]
         )
@@ -285,8 +285,8 @@ class TestExecutionLoop:
         request = QueryRequest(
             messages=[
                 LlmClientMessage(
-                    role="human",
-                    content="Create portfolio with AAPL and MSFT",  # type: ignore
+                    role="human",  # type: ignore
+                    content="Create portfolio with AAPL and MSFT",
                 ),
             ]
         )
