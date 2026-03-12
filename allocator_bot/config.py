@@ -9,6 +9,7 @@ load_dotenv()
 config = AppConfig(
     agent_host_url=os.getenv("AGENT_HOST_URL", ""),
     app_api_key=os.getenv("APP_API_KEY", ""),
+    agent_model=os.getenv("AGENT_MODEL", "qwen/qwen3.5-397b-a17b"),
     data_folder_path=os.getenv("DATA_FOLDER_PATH", None),
     openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
     s3_enabled=os.getenv("S3_ENABLED", "false").lower() == "true",

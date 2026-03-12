@@ -26,6 +26,11 @@ spec:
             configMapKeyRef:
               name: allocator-bot-config
               key: AGENT_HOST_URL
+        - name: AGENT_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: allocator-bot-config
+              key: AGENT_MODEL
         - name: APP_API_KEY
           valueFrom:
             secretKeyRef:

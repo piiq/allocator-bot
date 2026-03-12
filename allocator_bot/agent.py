@@ -26,6 +26,7 @@ from openbb_ai.models import (  # type: ignore[import-untyped]
     WidgetParam,
 )
 
+from .config import config
 from .models import TaskStructure
 from .portfolio import prepare_allocation
 from .prompts import (
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
     DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
     model=RetryChatModel(
         OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
+            model=config.agent_model,
             temperature=0.0,
             provider_sort="latency",
         ),
@@ -57,7 +58,7 @@ async def _need_to_allocate_portfolio(conversation: str) -> bool: ...  # type: i
     PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
     model=RetryChatModel(
         OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
+            model=config.agent_model,
             temperature=0.0,
             provider_sort="latency",
         ),
@@ -72,7 +73,7 @@ def make_llm(chat_messages: list) -> Callable:
         SystemMessage(SYSTEM_PROMPT),
         *chat_messages,
         model=OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
+            model=config.agent_model,
             temperature=0.7,
             provider_sort="latency",
         ),
