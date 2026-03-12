@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for allocator-bot
 # Build stage
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_DOWNLOADS=0
 
@@ -11,7 +11,8 @@ COPY . /app
 RUN uv sync --locked --no-dev
 
 # Runtime stage
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
+
 WORKDIR /app
 
 # Create non-root user
