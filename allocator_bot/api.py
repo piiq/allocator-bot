@@ -411,7 +411,7 @@ async def get_task_data(
     return JSONResponse(content={"tasks": df.to_dict(orient="records")})
 
 
-@app.post("/v1/query")
+@app.post("/v1/query", openapi_extra={"widget_config": {"exclude": True}})
 async def query(
     request: QueryRequest, token: str = Depends(get_current_user)
 ) -> EventSourceResponse:
