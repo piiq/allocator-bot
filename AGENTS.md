@@ -1,4 +1,4 @@
-# llms.md
+# AGENTS.md
 
 This file provides guidance to AI coding agents when working with code in this repository.
 This file is symlinked to `CLAUDE.md`, `GEMINI.md` and `.cursorrules` to be automatically read by AI coding assistants.
@@ -116,6 +116,7 @@ User Request → FastAPI Endpoint (/v1/query) → Agent Execution Loop → Portf
 - `S3_*`: Cloud storage configuration (if S3_ENABLED=true)
 - `AGENT_HOST_URL`: Application host URL
 - `APP_API_KEY`: API access token
+- `AGENT_MODEL`: The model slug used by the agent (optional, defaults to `qwen/qwen3.5-397b-a17b`)
 
 ### Optional Configuration
 
