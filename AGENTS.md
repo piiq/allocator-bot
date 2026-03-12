@@ -40,13 +40,19 @@ uv run pytest
 Code formatting
 
 ```bash
-uv run black .
+uv run ruff format .
 ```
 
 Linting
 
 ```bash
 uv run ruff check .
+```
+
+Type checking
+
+```bash
+uv run ty check .
 ```
 
 ### Dependency Management
