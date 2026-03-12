@@ -408,7 +408,7 @@ async def get_task_data(
     # Sort by timestamp (newest first)
     df = df.sort_values("Timestamp", ascending=False)
 
-    return JSONResponse(content={"tasks": df.to_dict(orient="records")})
+    return JSONResponse(content={"tasks": df.fillna("N/A").to_dict(orient="records")})
 
 
 @app.post("/v1/query", openapi_extra={"widget_config": {"exclude": True}})
