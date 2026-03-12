@@ -416,6 +416,9 @@ async def query(
     request: QueryRequest, token: str = Depends(get_current_user)
 ) -> EventSourceResponse:
     """Query the Allocator Bot."""
-    return EventSourceResponse(
-        (event.model_dump() async for event in execution_loop(request))
-    )
+
+    async def event_generator():
+        async for event in execution_loop(request):
+            yield event.model_dump()
+
+    return EventSourceResponse(event_generator())
