@@ -81,7 +81,7 @@ async def test_optimize_portfolio_resilience():
 
     # String results should be either failure messages or adjustment notes
     for model in string_results:
-        result = results[model]
+        result = str(results[model])
         assert (
             result.startswith("Failed")
             or "adjusted" in result
@@ -119,7 +119,7 @@ async def test_prepare_allocation(mock_fetch_historical_prices):
     prices = pd.DataFrame(prices_data).set_index("date")
 
     # Mock the pivot_table call
-    mock_df.pivot_table = MagicMock(return_value=prices)
+    mock_df.pivot_table = MagicMock(return_value=prices)  # type: ignore
 
     allocation = await prepare_allocation(
         asset_symbols=["AAPL", "GOOG"],

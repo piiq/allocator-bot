@@ -12,14 +12,14 @@ from magentic import (
 )
 from magentic.chat_model.openrouter_chat_model import OpenRouterChatModel
 from magentic.chat_model.retry_chat_model import RetryChatModel
-from openbb_ai.helpers import (  # type: ignore[import-untyped]
+from openbb_ai.helpers import (
     citations,
     cite,
     message_chunk,
     reasoning_step,
     table,
 )
-from openbb_ai.models import (  # type: ignore[import-untyped]
+from openbb_ai.models import (
     BaseSSE,
     QueryRequest,
     Widget,
@@ -100,7 +100,6 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                 user_message_content = await sanitize_message(message.content)
                 chat_messages.append(UserMessage(content=user_message_content))
             if await is_last_message(message, request.messages):
-
                 # I intentionally am not using function calling in this example
                 # because I want all the logic that is under the hood to be exposed
                 # explicitly so that others can use this code as a reference to learn

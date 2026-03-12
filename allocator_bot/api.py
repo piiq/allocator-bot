@@ -3,12 +3,12 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-import pandas as pd  # type: ignore
+import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer
-from openbb_ai.models import QueryRequest  # type: ignore[import-untyped]
+from openbb_ai.models import QueryRequest
 from sse_starlette.sse import EventSourceResponse
 
 from .agent import execution_loop
@@ -52,7 +52,7 @@ origins = [
 ]
 
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # type: ignore
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],

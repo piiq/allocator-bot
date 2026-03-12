@@ -9,7 +9,8 @@ class AppConfig(BaseModel):
     )
     app_api_key: str = Field(description="The API key to access the bot.")
     agent_model: str = Field(
-        default="qwen/qwen3.5-397b-a17b", description="The model slug used by the agent."
+        default="qwen/qwen3.5-397b-a17b",
+        description="The model slug used by the agent.",
     )
     openrouter_api_key: str = Field(
         description="OpenRouter API key for AI functionality."

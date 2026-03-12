@@ -3,7 +3,7 @@ import re
 import string
 import time
 
-from openbb_ai.models import LlmMessage  # type: ignore[import-untyped]
+from openbb_ai.models import LlmMessage
 
 
 def validate_api_key(token: str, api_key: str) -> bool:

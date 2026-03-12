@@ -4,12 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "allocator-bot"
-version = "0.2.0"
+version = "0.3.0"
 description = "An asset allocation bot for OpenBB that uses PyPortfolioOpt to generate efficient frontier allocations."
-authors = [{ name = "Theodore Aptekarev", email = "aptekarev@gmail.com" }]
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
-license = { text = "MIT" }
+license = "MIT"
+authors = [
+  { name = "Theodore Aptekarev", email = "aptekarev@gmail.com" },
+]
 classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
@@ -33,35 +35,31 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "black>=24.4.2",
+  "coverage>=7.9.1",
+  "httpx>=0.28.1",
   "pandas-stubs>=2.2.3.250527",
+  "pytest-asyncio>=1.0.0",
+  "pytest-cov>=6.2.1",
   "pytest>=8.4.0",
   "ruff>=0.4.4",
+  "ty>=0.0.21",
   "types-boto3>=1.38.32",
 ]
 
 [project.scripts]
 allocator-bot = "allocator_bot.__main__:main"
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.hatch.build]
 include = ["allocator_bot/**"]
 
-[dependency-groups]
-dev = [
-  "coverage>=7.9.1",
-  "httpx>=0.28.1",
-  "pytest-asyncio>=1.0.0",
-  "pytest-cov>=6.2.1",
-]
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "--cov=allocator_bot --cov-report=term-missing"
 filterwarnings = [
-    "ignore:UserImageMessage is deprecated:DeprecationWarning",
-    "ignore:Inheritance class ClientSession from ClientSession is discouraged:DeprecationWarning",
+  "ignore:UserImageMessage is deprecated:DeprecationWarning",
+  "ignore:Inheritance class ClientSession from ClientSession is discouraged:DeprecationWarning",
 ]
