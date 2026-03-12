@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "allocator-bot"
-version = "0.3.0"
+version = "0.3.1"
 description = "An asset allocation bot for OpenBB that uses PyPortfolioOpt to generate efficient frontier allocations."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
