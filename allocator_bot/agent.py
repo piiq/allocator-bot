@@ -12,20 +12,21 @@ from magentic import (
 )
 from magentic.chat_model.openrouter_chat_model import OpenRouterChatModel
 from magentic.chat_model.retry_chat_model import RetryChatModel
-from openbb_ai.helpers import (  # type: ignore[import-untyped]
+from openbb_ai.helpers import (
     citations,
     cite,
     message_chunk,
     reasoning_step,
     table,
 )
-from openbb_ai.models import (  # type: ignore[import-untyped]
+from openbb_ai.models import (
     BaseSSE,
     QueryRequest,
     Widget,
     WidgetParam,
 )
 
+from .config import config
 from .models import TaskStructure
 from .portfolio import prepare_allocation
 from .prompts import (
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
     DO_I_NEED_TO_ALLOCATE_THE_PORTFOLIO_PROMPT,
     model=RetryChatModel(
         OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
+            model=config.agent_model,
             temperature=0.0,
             provider_sort="latency",
         ),
@@ -57,7 +58,7 @@ async def _need_to_allocate_portfolio(conversation: str) -> bool: ...  # type: i
     PARSE_USER_MESSAGE_TO_STRUCTURE_THE_TASK,
     model=RetryChatModel(
         OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
+            model=config.agent_model,
             temperature=0.0,
             provider_sort="latency",
         ),
@@ -72,7 +73,7 @@ def make_llm(chat_messages: list) -> Callable:
         SystemMessage(SYSTEM_PROMPT),
         *chat_messages,
         model=OpenRouterChatModel(
-            model="deepseek/deepseek-chat-v3-0324",
+            model=config.agent_model,
             temperature=0.7,
             provider_sort="latency",
         ),
@@ -99,7 +100,6 @@ async def execution_loop(request: QueryRequest) -> AsyncGenerator[BaseSSE, None]
                 user_message_content = await sanitize_message(message.content)
                 chat_messages.append(UserMessage(content=user_message_content))
             if await is_last_message(message, request.messages):
-
                 # I intentionally am not using function calling in this example
                 # because I want all the logic that is under the hood to be exposed
                 # explicitly so that others can use this code as a reference to learn

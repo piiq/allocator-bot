@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
-from openbb_ai.models import (  # type: ignore[import-untyped]
+from openbb_ai.models import (
     LlmClientMessage,
     QueryRequest,
 )
@@ -20,7 +20,8 @@ class TestExecutionLoop:
         request = QueryRequest(
             messages=[
                 LlmClientMessage(
-                    role="human", content="What is portfolio optimization?"
+                    role="human",  # type: ignore
+                    content="What is portfolio optimization?",
                 )
             ]
         )
@@ -60,10 +61,11 @@ class TestExecutionLoop:
         """Test execution loop with AI messages in history."""
         request = QueryRequest(
             messages=[
-                LlmClientMessage(role="human", content="Hello"),
-                LlmClientMessage(role="ai", content="Hi there!"),
+                LlmClientMessage(role="human", content="Hello"),  # type: ignore
+                LlmClientMessage(role="ai", content="Hi there!"),  # type: ignore
                 LlmClientMessage(
-                    role="human", content="Create a portfolio with AAPL and GOOGL"
+                    role="human",  # type: ignore
+                    content="Create a portfolio with AAPL and GOOGL",
                 ),
             ]
         )
@@ -123,7 +125,8 @@ class TestExecutionLoop:
         request = QueryRequest(
             messages=[
                 LlmClientMessage(
-                    role="human", content="Create a portfolio with invalid symbols"
+                    role="human",  # type: ignore
+                    content="Create a portfolio with invalid symbols",
                 ),
             ]
         )
@@ -164,7 +167,7 @@ class TestExecutionLoop:
         """Test execution loop when saving allocation fails."""
         request = QueryRequest(
             messages=[
-                LlmClientMessage(role="human", content="Create a portfolio with AAPL"),
+                LlmClientMessage(role="human", content="Create a portfolio with AAPL")  # type: ignore
             ]
         )
 
@@ -217,7 +220,7 @@ class TestExecutionLoop:
         """Test execution loop when LLM returns a string (not streamed)."""
         request = QueryRequest(
             messages=[
-                LlmClientMessage(role="human", content="What is diversification?")
+                LlmClientMessage(role="human", content="What is diversification?")  # type: ignore
             ]
         )
 
@@ -245,7 +248,7 @@ class TestExecutionLoop:
         """Test execution loop when LLM returns a streamed result."""
         request = QueryRequest(
             messages=[
-                LlmClientMessage(role="human", content="Explain portfolio theory")
+                LlmClientMessage(role="human", content="Explain portfolio theory")  # type: ignore
             ]
         )
 
@@ -282,7 +285,8 @@ class TestExecutionLoop:
         request = QueryRequest(
             messages=[
                 LlmClientMessage(
-                    role="human", content="Create portfolio with AAPL and MSFT"
+                    role="human",  # type: ignore
+                    content="Create portfolio with AAPL and MSFT",
                 ),
             ]
         )
@@ -345,7 +349,7 @@ class TestExecutionLoop:
         """Test execution loop properly handles message content."""
         request = QueryRequest(
             messages=[
-                LlmClientMessage(role="human", content="Test message with {braces}"),
+                LlmClientMessage(role="human", content="Test message with {braces}")  # type: ignore
             ]
         )
 
@@ -374,7 +378,7 @@ class TestExecutionLoop:
         """Test execution loop handles messages without content attribute."""
         # Create a real message and then remove the content attribute via mocking
         request = QueryRequest(
-            messages=[LlmClientMessage(role="human", content="Test message")]
+            messages=[LlmClientMessage(role="human", content="Test message")],  # type: ignore
         )
 
         async def mock_need_to_allocate_portfolio(*args, **kwargs):

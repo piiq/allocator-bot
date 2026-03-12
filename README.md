@@ -59,6 +59,7 @@ docker run --rm -it --name allocator-bot \
 
 - `AGENT_HOST_URL`: The host URL where the app is running (e.g., `http://localhost:4322`)
 - `APP_API_KEY`: Your API key to access the bot
+- `AGENT_MODEL`: The model slug used by the agent (optional, defaults to `qwen/qwen3.5-397b-a17b`)
 - `OPENROUTER_API_KEY`: Your OpenRouter API key for LLM access
 - `FMP_API_KEY`: Your Financial Modeling Prep API key for market data
 

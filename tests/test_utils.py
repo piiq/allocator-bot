@@ -70,49 +70,49 @@ class TestIsLastMessage:
     async def test_is_last_message_true(self):
         """Test when message is the last human message."""
         messages = [
-            LlmClientMessage(role="human", content="First message"),
-            LlmClientMessage(role="ai", content="Response"),
-            LlmClientMessage(role="human", content="Last message"),
+            LlmClientMessage(role="human", content="First message"),  # type: ignore
+            LlmClientMessage(role="ai", content="Response"),  # type: ignore
+            LlmClientMessage(role="human", content="Last message"),  # type: ignore
         ]
         target_message = messages[2]  # Last human message
-        assert await is_last_message(target_message, messages) is True
+        assert await is_last_message(target_message, messages) is True  # type: ignore
 
     async def test_is_last_message_false(self):
         """Test when message is not the last human message."""
         messages = [
-            LlmClientMessage(role="human", content="First message"),
-            LlmClientMessage(role="ai", content="Response"),
-            LlmClientMessage(role="human", content="Last message"),
+            LlmClientMessage(role="human", content="First message"),  # type: ignore
+            LlmClientMessage(role="ai", content="Response"),  # type: ignore
+            LlmClientMessage(role="human", content="Last message"),  # type: ignore
         ]
         target_message = messages[0]  # First human message
-        assert await is_last_message(target_message, messages) is False
+        assert await is_last_message(target_message, messages) is False  # type: ignore
 
     async def test_is_last_message_no_human_messages(self):
         """Test when there are no human messages."""
         messages = [
-            LlmClientMessage(role="ai", content="Response 1"),
-            LlmClientMessage(role="ai", content="Response 2"),
+            LlmClientMessage(role="ai", content="Response 1"),  # type: ignore
+            LlmClientMessage(role="ai", content="Response 2"),  # type: ignore
         ]
-        target_message = LlmClientMessage(role="human", content="Test message")
-        assert await is_last_message(target_message, messages) is False
+        target_message = LlmClientMessage(role="human", content="Test message")  # type: ignore
+        assert await is_last_message(target_message, messages) is False  # type: ignore
 
     async def test_is_last_message_only_human_messages(self):
         """Test when all messages are human messages."""
         messages = [
-            LlmClientMessage(role="human", content="First message"),
-            LlmClientMessage(role="human", content="Second message"),
-            LlmClientMessage(role="human", content="Last message"),
+            LlmClientMessage(role="human", content="First message"),  # type: ignore
+            LlmClientMessage(role="human", content="Second message"),  # type: ignore
+            LlmClientMessage(role="human", content="Last message"),  # type: ignore
         ]
         target_message = messages[2]  # Last message
-        assert await is_last_message(target_message, messages) is True
+        assert await is_last_message(target_message, messages) is True  # type: ignore
 
     async def test_is_last_message_single_human_message(self):
         """Test with single human message."""
         messages = [
-            LlmClientMessage(role="human", content="Only message"),
+            LlmClientMessage(role="human", content="Only message"),  # type: ignore
         ]
         target_message = messages[0]
-        assert await is_last_message(target_message, messages) is True
+        assert await is_last_message(target_message, messages) is True  # type: ignore
 
 
 class TestGenerateId:

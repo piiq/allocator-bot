@@ -4,8 +4,8 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import aiohttp
-import boto3  # type: ignore
-from botocore.exceptions import ClientError  # type: ignore
+import boto3
+from botocore.exceptions import ClientError
 from openbb_fmp import FMPEquityHistoricalFetcher
 
 from .models import AppConfig

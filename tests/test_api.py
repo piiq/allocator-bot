@@ -474,7 +474,7 @@ async def test_query_endpoint(async_client):
     """Test the query endpoint (basic structure test)."""
     from unittest.mock import patch
 
-    from openbb_ai import message_chunk  # type: ignore[import-untyped]
+    from openbb_ai import message_chunk
 
     # Mock the execution_loop to return a simple async generator
     async def mock_execution_loop(request):

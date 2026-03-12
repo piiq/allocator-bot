@@ -69,6 +69,7 @@ class TestAppConfig:
                 s3_secret_key="test-secret-key",
                 s3_bucket_name="test-bucket",
                 fmp_api_key="test-fmp-key",
+                data_folder_path="data",
             )
         assert "S3 configuration values must be set when S3 is enabled" in str(
             exc_info.value

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 from openbb_fmp import FMPEquityHistoricalFetcher
-from pypfopt import EfficientFrontier, expected_returns, risk_models  # type: ignore
+from pypfopt import EfficientFrontier, expected_returns, risk_models
 
 from .config import config
 
@@ -24,7 +24,7 @@ async def fetch_historical_prices(
         },
         credentials={"fmp_api_key": config.fmp_api_key or ""},
     )
-    return pd.DataFrame(p.model_dump() for p in price_data)  # type: ignore [union-attr]
+    return pd.DataFrame(p.model_dump() for p in price_data)  # type: ignore
 
 
 async def optimize_portfolio(

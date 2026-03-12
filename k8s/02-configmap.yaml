@@ -6,6 +6,9 @@ data:
   # Host URL where the app will be accessible
   AGENT_HOST_URL: "http://allocator-bot-service"
   
+  # Model slug used by the agent
+  AGENT_MODEL: "qwen/qwen3.5-397b-a17b"
+
   # Data folder path for storing allocation data
   DATA_FOLDER_PATH: "data"
   
